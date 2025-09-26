@@ -1,3 +1,6 @@
+// This is a reactjs file, which is not allowed in our project. use this to run it in your own desktop and see first-hand on how the calendar view system sould behave.
+// but please keep in mind that your own code implementation and interpretation can be different. this prototype is very crude, and is missing features on what its supposed to do.
+
 import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
 
