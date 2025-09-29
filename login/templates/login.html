@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - TaskIt</title>
+    <link rel="stylesheet" href="{% static 'login/login.css' %}">
+</head>
+<body>
+<div class="login-container">
+    <h2>Login</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <label for="email">Email</label>
+        <input type="email" name="email" placeholder="Enter your email" required>
+
+        <label for="password">Password</label>
+        <input type="password" name="password" placeholder="Enter your password" required>
+
+        <div class="forgot-password">
+            <a href="#">Forgot password?</a>
+        </div>
+
+        <button type="submit">Login</button>
+
+        <p>Don’t have an account? <a href="{% url 'register' %}">Register here</a></p>
+    </form>
+
+    {% if messages %}
+        <ul>
+        {% for message in messages %}
+            <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+</body>
+</html>
