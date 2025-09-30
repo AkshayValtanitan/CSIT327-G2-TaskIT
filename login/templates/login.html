@@ -14,9 +14,15 @@
         {% csrf_token %}
         <label for="email">Email</label>
         <input type="email" name="email" placeholder="Enter your email" required>
+        {% if email_error %}
+            <p class="field-error">{{ email_error }}</p>
+        {% endif %}
 
-        <label for="password">Password</label>
+        <label for="password" class="password-label">Password</label>
         <input type="password" name="password" placeholder="Enter your password" required>
+        {% if password_error %}
+            <p class="field-error">{{ password_error }}</p>
+        {% endif %}
 
         <div class="forgot-password">
             <a href="#">Forgot password?</a>
@@ -27,13 +33,6 @@
         <p>Don’t have an account? <a href="{% url 'register' %}">Register here</a></p>
     </form>
 
-    {% if messages %}
-        <ul>
-        {% for message in messages %}
-            <li>{{ message }}</li>
-        {% endfor %}
-        </ul>
-    {% endif %}
 </div>
 </body>
 </html>
