@@ -5,34 +5,112 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - TaskIt</title>
-    <link rel="stylesheet" href="{% static 'login/login.css' %}">
+    <link rel="stylesheet" href="{% static 'login/css/login.css' %}">
 </head>
 <body>
-<div class="login-container">
-    <h2>Login</h2>
-    <form method="POST">
-        {% csrf_token %}
-        <label for="email">Email</label>
-        <input type="email" name="email" placeholder="Enter your email" required>
-        {% if email_error %}
-            <p class="field-error">{{ email_error }}</p>
-        {% endif %}
+<!-- <img  src="{% static 'login/images/login_bg.jpg' %}" alt="backgroundimage"> -->
+    <img  src="{% static 'login/images/cit_logo.png' %}" alt="cit_logo" height="00px" width="auto">
+<div class="login-wrapper">
+    <div class="top-title">
+        <img  src="{% static 'login/images/cit_logo.png' %}" alt="cit_logo">
+        <h1 class="task">Task</h1><h1 class="it">IT</h1>
+    </div>
 
-        <label for="password" class="password-label">Password</label>
-        <input type="password" name="password" placeholder="Enter your password" required>
-        {% if password_error %}
-            <p class="field-error">{{ password_error }}</p>
-        {% endif %}
+    <div class="login-container">
+        <h2>Log In</h2>
+        <h3>Welcome back, Let's get to work!</h3>
 
-        <div class="forgot-password">
-            <a href="#">Forgot password?</a>
-        </div>
+        <div class="login-toggle">
+            <button type="button" id="email-btn" class="login-toggle-btn active">Email</button>
+            <button type="button" id="username-btn" class="login-toggle-btn">Username</button>
+        </div>  
 
-        <button type="submit">Login</button>
+        <form method="POST" id="login-form">
+            {% csrf_token %}
+            <div id="email-login">
+                <label for="email">Email Addess</label>
+                <input type="email" name="email" placeholder="sample@email.com" required>
+                {% if email_error %}
+                    <p class="field-error">{{ email_error }}</p>
+                {% endif %}
+            </div>
+            
+            <div id="username" style="display: none;">
+                <label for="username">Username</label>
+                <input type="username" name="username" placeholder="Enter your username">
+                {% if username_error %}
+                    <p class="field-error">{{ username_error }}</p>
+                {% endif %}
+            </div>
 
-        <p>Don’t have an account? <a href="{% url 'register' %}">Register here</a></p>
-    </form>
+            <div class="password-row">
+                <label for="password" class="password-label">Password</label>
+                <div class="forgot-password">
+                    <a href="#">Forgot password?</a>
+                </div>
+            </div>
+            <input type="password" name="password" placeholder="Enter your password" required>
+            {% if password_error %}
+                <p class="field-error">{{ password_error }}</p>
+            {% endif %}
 
+            <button type="submit">Sign In</button>
+
+            <div class="divider">Or continue with</div>
+
+            <div class="social-buttons">
+                <button type="button" class="google-signin">
+                    <img src="{% static 'login/images/google_logo.png' %}" alt="Google Logo">
+                    Google
+                </button>
+
+                <button type="button" class="github-signin">
+                    <img src="{% static 'login/images/github_logo.png' %}" alt="GitHub Logo">
+                    GitHub
+                </button>
+            </div>
+
+            <p class="register_btn">Don’t have an account?&nbsp;<a class="create_btn" href="{% url 'register' %}">Create one</a></p>
+        </form>
+
+        <script>
+            const emailBtn = document.getElementById('email-btn');
+            const usernameBtn = document.getElementById('username-btn');
+            const emailInput = document.querySelector('#email-login input');
+            const usernameInput = document.querySelector('#username-login input');
+            const emailLogin = document.getElementById('email-login');
+            const usernameLogin = document.getElementById('username');
+
+            function activateButton(activeBtn, inactiveBtn) {
+                activeBtn.classList.add('active');
+                inactiveBtn.classList.remove('active');
+            }
+
+            emailBtn.addEventListener('click', () => {
+                emailLogin.style.display = 'block';
+                usernameLogin.style.display = 'none';
+                
+                emailBtn.classList.add('active');
+                usernameBtn.classList.remove('active');
+
+                emailInput.required = true;
+                usernameInput.required = false;
+            });
+
+            usernameBtn.addEventListener('click', () => {
+                emailLogin.style.display = 'none';
+                usernameLogin.style.display = 'block';
+                
+                usernameBtn.classList.add('active');
+                emailBtn.classList.remove('active');
+
+                emailInput.required = false;
+                usernameInput.required = true;
+            });
+        </script>
+
+    </div>
 </div>
+
 </body>
 </html>
