@@ -1,5 +1,6 @@
 {% load static %}
 {% load tz %}
+{% load socialaccount %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -60,15 +61,10 @@
             <div class="divider">Or continue with</div>
 
             <div class="social-buttons">
-                <button type="button" class="google-signin">
-                    <img src="{% static 'login/images/google_logo.png' %}" alt="Google Logo">
-                    Google
-                </button>
-
-                <button type="button" class="github-signin">
-                    <img src="{% static 'login/images/github_logo.png' %}" alt="GitHub Logo">
-                    GitHub
-                </button>
+                <a href="{% provider_login_url 'google' %}" class="google-btn">
+                    <img src="{% static 'login/images/google_logo.png' %}" alt="Google Logo" class="google-logo">
+                    Sign in with Google
+                </a>
             </div>
 
             <p class="register_btn">Don’t have an account?&nbsp;<a class="create_btn" href="{% url 'register' %}">Create one</a></p>
