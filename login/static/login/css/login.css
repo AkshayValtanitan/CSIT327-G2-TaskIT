@@ -21,7 +21,7 @@ body {
 
     position: relative;
     background:
-        url("/static/login/images/login_bg.jpg") left center no-repeat fixed,
+        url("/static/login/images/login_bg.png") left center no-repeat fixed,
         #f5f5f5;
     background-size: auto 100%;
 }
