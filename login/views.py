@@ -1,4 +1,5 @@
 import requests
+from django.contrib.auth import login as auth_login, get_user_model
 from django.shortcuts import render, redirect
 from allauth.socialaccount.signals import social_account_added
 from django.contrib.auth.decorators import login_required
@@ -13,6 +14,8 @@ import uuid
 SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
 SUPABASE_TABLE = "users"
+
+User = get_user_model()
 
 def login_view(request):
     password_error = None
@@ -32,10 +35,27 @@ def login_view(request):
             user_data = response.data
             if user_data:
                 if user_data[0]["password"] == hashlib.sha256(password.encode()).hexdigest():
+
+                    # Create or fetch the Django user
+                    user, created = User.objects.get_or_create(
+                        username=user_data[0]["username"],
+                        defaults={"email": email, "password": password},
+                    )
+
+                    # Log in the Django user (for @login_required)
+                    auth_login(request, user)
+
+                    # Store additional info in session if needed
                     request.session['user_id'] = user_data[0]['user_id']
                     request.session['email'] = user_data[0]['email']
+
                     messages.success(request, "Logged in successfully!")
-                    return redirect("/dashboard")
+                    return redirect("/dashboard/")
+
+                    # request.session['user_id'] = user_data[0]['user_id']
+                    # request.session['email'] = user_data[0]['email']
+                    # messages.success(request, "Logged in successfully!")
+                    # return redirect("/dashboard")
                 else:
                     password_error = "Invalid password"
             else:
@@ -45,10 +65,24 @@ def login_view(request):
             user_data = response.data
             if user_data:
                 if user_data[0]["password"] == hashlib.sha256(password.encode()).hexdigest():
+
+                    user, created = User.objects.get_or_create(
+                        username=username,
+                        defaults={"email": user_data[0].get("email", ""), "password": password},
+                    )
+
+                    auth_login(request, user)
+
                     request.session['user_id'] = user_data[0]['user_id']
                     request.session['username'] = user_data[0]['username']
+
                     messages.success(request, "Logged in successfully!")
-                    return redirect("/dashboard")
+                    return redirect("/dashboard/")
+
+                    # request.session['user_id'] = user_data[0]['user_id']
+                    # request.session['username'] = user_data[0]['username']
+                    # messages.success(request, "Logged in successfully!")
+                    # return redirect("/dashboard")
                 else:
                     password_error = "Invalid password"
             else:
