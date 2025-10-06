@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="{% static 'login/css/dashboard.css' %}">
+    <title>Weekly Calendar</title>
+    <link rel="stylesheet" href="{% static 'login/css/dashboard.css' %}?v={% now 'U' %}">
 </head>
 <body>
     <div class="sidebar">
@@ -19,6 +19,73 @@
     <div class="main">
         <h1>Welcome!</h1>
         <p>This is your dashboard.</p>
+
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <h1 id="monthYear"></h1>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
     </div>
+
+    <script>
+        const calendarGrid = document.getElementById("calendarGrid");
+        const monthYear = document.getElementById("monthYear");
+
+        const now = new Date();
+        const currentDay = now.getDay(); // 0 = Sunday
+        const currentHour = now.getHours();
+
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
+        // show current month & year
+        monthYear.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+
+        const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const hours = Array.from({ length: 24 }, (_, i) => {
+            const hour = i % 12 || 12;
+            const ampm = i < 12 ? "AM" : "PM";
+            return `${hour} ${ampm}`;
+        });
+
+        // create header row
+        const headerRow = document.createElement("div");
+        headerRow.className = "header-row";
+        headerRow.innerHTML = `<div class="time-col"></div>` +
+            daysOfWeek.map((d, i) => `
+                <div class="day-header ${i === currentDay ? 'current-day' : ''}">
+                    <div>${d}</div>
+                    <div>${now.getDate() - currentDay + i}</div>
+                </div>
+            `).join("");
+        calendarGrid.appendChild(headerRow);
+
+        // create hour rows
+        hours.forEach((h, hourIndex) => {
+            const row = document.createElement("div");
+            row.className = "hour-row";
+
+            const timeCell = document.createElement("div");
+            timeCell.className = "time-col";
+            timeCell.textContent = h;
+            row.appendChild(timeCell);
+
+            daysOfWeek.forEach((_, dayIndex) => {
+                const cell = document.createElement("div");
+                cell.className = "cell";
+
+                if (dayIndex === currentDay && hourIndex === currentHour) {
+                    cell.classList.add("current-time");
+                }
+
+                row.appendChild(cell);
+            });
+
+            calendarGrid.appendChild(row);
+        });
+    </script>
 </body>
 </html>

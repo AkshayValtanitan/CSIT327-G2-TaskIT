@@ -1,3 +1,5 @@
+
+
 body {
     margin: 0;
     font-family: Arial, sans-serif;
@@ -30,5 +32,76 @@ body {
 
 .main {
     flex: 1;
-    padding: 20px;
+    padding: 40px;
+}
+
+.main h1 {
+    font-size: 2em;
+    margin-bottom: 10px;
+}
+
+.calendar-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.calendar-header {
+    text-align: center;
+    padding: 10px;
+    background-color: #e8e8e8;
+    border-bottom: 1px solid #161616;
+}
+
+.calendar-grid {
+    flex: 1;
+    overflow: auto;
+    display: block;
+}
+
+.header-row {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    background-color: #dedede;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.day-header {
+    padding: 10px;
+    text-align: center;
+    border-left: 1px solid #dddddd;
+}
+
+.current-day {
+    background-color: #f0f0f0;
+    color: #4fc3f7;
+    font-weight: bold;
+    border-bottom: 2px solid #4fc3f7;
+}
+
+.hour-row {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    min-height: 50px;
+}
+
+.time-col {
+    background-color: #eaeaea;
+    text-align: center;
+    border-bottom: 1px solid #181818;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+
+.cell {
+    border: 1px solid #333;
+}
+
+.current-time {
+    background-color: #4fc3f7;
+    opacity: 0.3;
 }
