@@ -35,6 +35,15 @@
                 <input type="hidden" name="google_id">
 
                 <button type="submit">Register</button>
+
+                <div class="divider">Or sign up with</div>
+
+                <div class="social-buttons">
+                    <a href="{% provider_login_url 'google' %}" class="google-btn">
+                        <img src="{% static 'login/images/google_logo.png' %}" alt="Google Logo" class="google-logo">
+                        Sign up with Google
+                    </a>
+                </div>
             </form>
 
         <p class="login-link">
