@@ -19,6 +19,19 @@
     <div class="main">
         <h1>Welcome User!</h1>
         <p>This is your dashboard.</p>
+        <div style="margin: 12px 0;">
+            <button id="openQuickAdd" class="btn-primary">Quick Add Task</button>
+        </div>
+        <div id="lists" style="display:flex; gap:20px; margin: 10px 0; flex-wrap: wrap;">
+            <div style="flex:1; min-width:280px;">
+                <h3>Unfinished</h3>
+                <ul id="unfinishedList"></ul>
+            </div>
+            <div style="flex:1; min-width:280px;">
+                <h3>Completed</h3>
+                <ul id="completedList"></ul>
+            </div>
+        </div>
         
         <div class="calendar-box">
             <div class="calendar-header">
@@ -31,9 +44,73 @@
         
     </div>
 
+    <!-- Quick Add Modal -->
+    <div id="quickAddModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="qaTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="qaTitle">Quick Add Task</h2>
+                <button id="closeQuickAdd" class="icon-btn" aria-label="Close">✕</button>
+            </div>
+            <form id="quickAddForm" novalidate>
+                <div class="form-grid">
+                    <label>
+                        <span>Title</span>
+                        <input type="text" id="taskTitle" name="title" placeholder="e.g., Math assignment" required>
+                    </label>
+                    <label>
+                        <span>Date</span>
+                        <input type="date" id="taskDate" name="date" required>
+                    </label>
+                    <label>
+                        <span>Start Hour</span>
+                        <select id="taskHour" name="hour" required></select>
+                    </label>
+                    <label>
+                        <span>Color</span>
+                        <input type="color" id="taskColor" name="color" value="#2e7d32">
+                    </label>
+                    <label>
+                        <span>Priority</span>
+                        <select id="taskPriority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Status</span>
+                        <select id="taskStatus" name="status">
+                            <option value="pending" selected>Unfinished</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </label>
+                </div>
+                <label>
+                    <span>Description</span>
+                    <textarea id="taskDescription" name="description" rows="3" placeholder="Optional notes"></textarea>
+                </label>
+                <div id="formError" class="form-error" role="alert"></div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelQuickAdd" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Add Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         const calendarGrid = document.getElementById("calendarGrid");
         const monthYear = document.getElementById("monthYear");
+        const openQuickAdd = document.getElementById("openQuickAdd");
+        const quickAddModal = document.getElementById("quickAddModal");
+        const closeQuickAdd = document.getElementById("closeQuickAdd");
+        const cancelQuickAdd = document.getElementById("cancelQuickAdd");
+        const quickAddForm = document.getElementById("quickAddForm");
+        const taskTitle = document.getElementById("taskTitle");
+        const taskDate = document.getElementById("taskDate");
+        const taskHour = document.getElementById("taskHour");
+        const taskColor = document.getElementById("taskColor");
+        const formError = document.getElementById("formError");
 
         const now = new Date();
         const currentDate = now.getDate();
@@ -55,6 +132,20 @@
             const ampm = i < 12 ? "AM" : "PM";
             return `${hour} ${ampm}`;
         });
+
+        // populate hour select in modal
+        function populateHourSelect() {
+            taskHour.innerHTML = "";
+            for (let i = 0; i < 24; i++) {
+                const hour = i % 12 || 12;
+                const ampm = i < 12 ? "AM" : "PM";
+                const opt = document.createElement("option");
+                opt.value = String(i);
+                opt.textContent = `${hour} ${ampm}`;
+                if (i === currentHour) opt.selected = true;
+                taskHour.appendChild(opt);
+            }
+        }
 
         // create header row, the mondays, tuesdays etc.
         const headerRow = document.createElement("div");
@@ -97,6 +188,8 @@
             for (let day = 1; day <= daysInMonth; day++) {
                 const cell = document.createElement("div");
                 cell.className = "cell";
+                cell.dataset.day = String(day);
+                cell.dataset.hour = String(hourIndex);
 
                 // highlight current day & hour
                 if (day === currentDate) {
@@ -113,6 +206,213 @@
 
             calendarGrid.appendChild(row);
         });
+
+        // API helpers (Supabase via Django endpoints)
+        const API_BASE = '/api/tasks/';
+        async function apiGetTasks(year, month) {
+            const params = new URLSearchParams({ year: String(year), month: String(month) });
+            const res = await fetch(`${API_BASE}?${params.toString()}`, { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('Failed to fetch tasks');
+            const data = await res.json();
+            return data.tasks || [];
+        }
+        async function apiCreateTask(task) {
+            const res = await fetch(API_BASE, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(task)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to create task');
+            return data.task;
+        }
+        async function apiPatchTask(id, patch) {
+            const res = await fetch(`/api/tasks/${id}/`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(patch)
+            });
+            if (!res.ok) throw new Error('Failed to update');
+            return res.json();
+        }
+
+        // Render tasks onto calendar
+        async function renderTasks() {
+            // remove existing pills
+            document.querySelectorAll('.event-pill').forEach(el => el.remove());
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            let tasks = [];
+            try {
+                tasks = await apiGetTasks(year, month);
+            } catch (e) {
+                console.error(e);
+            }
+
+            // sort: high > medium > low, then date/hour
+            const priorityRank = { high: 0, medium: 1, low: 2 };
+            tasks.sort((a,b)=>{
+                const pr = (priorityRank[a.priority||'medium'] - priorityRank[b.priority||'medium']);
+                if (pr !== 0) return pr;
+                const ad = new Date(a.date); const bd = new Date(b.date);
+                if (ad - bd !== 0) return ad - bd;
+                return (a.hour||0) - (b.hour||0);
+            });
+
+            const unfinished = document.getElementById('unfinishedList');
+            const completed = document.getElementById('completedList');
+            unfinished.innerHTML = '';
+            completed.innerHTML = '';
+
+            tasks.forEach(t => {
+                const d = new Date(t.date);
+                if (d.getFullYear() !== year || d.getMonth() !== month) return;
+                const day = d.getDate();
+                const hourIndex = Number(t.hour);
+                const selector = `.cell[data-day="${day}"][data-hour="${hourIndex}"]`;
+                const cell = document.querySelector(selector);
+                if (!cell) return;
+                const pill = document.createElement('div');
+                pill.className = 'event-pill';
+                pill.textContent = t.title;
+                pill.style.backgroundColor = t.color || '#2e7d32';
+                pill.title = t.description || '';
+                pill.dataset.id = t.id;
+                pill.addEventListener('click', () => openEditModal(t));
+                cell.appendChild(pill);
+
+                // also list item
+                const li = document.createElement('li');
+                li.textContent = `${t.title} — ${t.priority || 'medium'} — ${d.toLocaleDateString()} ${hours[hourIndex]}`;
+                li.style.cursor = 'pointer';
+                li.onclick = () => openEditModal(t);
+                if ((t.status||'pending') === 'completed') completed.appendChild(li); else unfinished.appendChild(li);
+            });
+        }
+
+        // Modal controls
+        function openModal() {
+            populateHourSelect();
+            taskDate.value = new Date().toISOString().slice(0, 10);
+            formError.textContent = "";
+            quickAddModal.classList.remove('hidden');
+            quickAddModal.setAttribute('aria-hidden', 'false');
+            taskTitle.focus();
+        }
+        function closeModal() {
+            quickAddModal.classList.add('hidden');
+            quickAddModal.setAttribute('aria-hidden', 'true');
+            quickAddForm.reset();
+            formError.textContent = "";
+        }
+
+        openQuickAdd.addEventListener('click', openModal);
+        closeQuickAdd.addEventListener('click', closeModal);
+        cancelQuickAdd.addEventListener('click', closeModal);
+        window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+        // Edit/Delete modal (simple reuse of quick add modal)
+        async function openEditModal(task) {
+            populateHourSelect();
+            taskTitle.value = task.title || '';
+            taskDate.value = task.date || new Date().toISOString().slice(0,10);
+            taskHour.value = String(task.hour ?? currentHour);
+            taskColor.value = task.color || '#2e7d32';
+            document.getElementById('taskDescription').value = task.description || '';
+            document.getElementById('taskPriority').value = task.priority || 'medium';
+            document.getElementById('taskStatus').value = task.status || 'pending';
+            formError.textContent = "";
+            quickAddModal.classList.remove('hidden');
+            quickAddModal.setAttribute('aria-hidden', 'false');
+
+            const actions = document.querySelector('.modal-actions');
+            let deleteBtn = document.getElementById('deleteTaskBtn');
+            if (!deleteBtn) {
+                deleteBtn = document.createElement('button');
+                deleteBtn.id = 'deleteTaskBtn';
+                deleteBtn.className = 'btn-secondary';
+                deleteBtn.type = 'button';
+                deleteBtn.textContent = 'Delete';
+                actions.insertBefore(deleteBtn, actions.firstChild);
+            }
+
+            deleteBtn.onclick = async () => {
+                try {
+                    await fetch(`/api/tasks/${task.id}/`, { method: 'DELETE', credentials: 'same-origin' });
+                    closeModal();
+                    await renderTasks();
+                } catch (e) {
+                    formError.textContent = 'Failed to delete task';
+                }
+            };
+
+            quickAddForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const payload = {
+                    title: taskTitle.value.trim(),
+                    date: taskDate.value,
+                    hour: taskHour.value,
+                    color: taskColor.value,
+                    description: document.getElementById('taskDescription').value.trim(),
+                    priority: document.getElementById('taskPriority').value,
+                    status: document.getElementById('taskStatus').value
+                };
+                if (!payload.title) { formError.textContent = 'Title is required.'; return; }
+                if (!payload.date) { formError.textContent = 'Date is required.'; return; }
+                if (payload.hour === '' || payload.hour == null) { formError.textContent = 'Start hour is required.'; return; }
+                try {
+                    await apiPatchTask(task.id, payload);
+                    closeModal();
+                    await renderTasks();
+                } catch (err) {
+                    formError.textContent = err.message || 'Failed to update task';
+                }
+            };
+        }
+
+        // Validation and submit
+        quickAddForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = taskTitle.value.trim();
+            const date = taskDate.value;
+            const hour = taskHour.value;
+            const color = taskColor.value;
+            const description = document.getElementById('taskDescription').value.trim();
+
+            // simple validation
+            if (!title) {
+                formError.textContent = 'Title is required.';
+                taskTitle.focus();
+                return;
+            }
+            if (!date) {
+                formError.textContent = 'Date is required.';
+                taskDate.focus();
+                return;
+            }
+            if (hour === "" || hour == null) {
+                formError.textContent = 'Start hour is required.';
+                taskHour.focus();
+                return;
+            }
+
+            try {
+                await apiCreateTask({
+                    title, date, hour, color, description,
+                    priority: document.getElementById('taskPriority').value,
+                    status: document.getElementById('taskStatus').value
+                });
+                closeModal();
+                await renderTasks();
+            } catch (err) {
+                formError.textContent = (err && err.message) || 'Failed to create task.';
+            }
+        });
+
+        // Initial render
+        renderTasks();
     </script>
 </body>
 </html>
