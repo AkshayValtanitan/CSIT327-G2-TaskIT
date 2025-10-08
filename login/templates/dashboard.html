@@ -19,13 +19,16 @@
     <div class="main">
         <h1>Welcome User!</h1>
         <p>This is your dashboard.</p>
-
-        <div class="calendar-container">
+        
+        <div class="calendar-box">
             <div class="calendar-header">
-                <h1 id="monthYear"></h1>
+                <h1 class="month-year" id="monthYear"></h1>
             </div>
-            <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="calendar-container">
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
         </div>
+        
     </div>
 
     <script>
@@ -33,7 +36,8 @@
         const monthYear = document.getElementById("monthYear");
 
         const now = new Date();
-        const currentDay = now.getDay(); // 0 = Sunday
+        const currentDate = now.getDate();
+        // const currentDay = now.getDay(); // 0 = Sunday
         const currentHour = now.getHours();
 
         const monthNames = [
@@ -44,23 +48,29 @@
         // show current month & year
         monthYear.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
 
-        const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        // const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         const hours = Array.from({ length: 24 }, (_, i) => {
             const hour = i % 12 || 12;
             const ampm = i < 12 ? "AM" : "PM";
             return `${hour} ${ampm}`;
         });
 
-        // create header row
+        // create header row, the mondays, tuesdays etc.
         const headerRow = document.createElement("div");
-        headerRow.className = "header-row";
-        headerRow.innerHTML = `<div class="time-col"></div>` +
-            daysOfWeek.map((d, i) => `
-                <div class="day-header ${i === currentDay ? 'current-day' : ''}">
-                    <div>${d}</div>
-                    <div>${now.getDate() - currentDay + i}</div>
-                </div>
-            `).join("");
+            headerRow.className = "header-row";
+            headerRow.innerHTML = `<div class="timecol-corner"></div>` +
+            Array.from({ length: daysInMonth }, (_, i) => {
+                const day = i + 1;
+                const dayName = new Date(now.getFullYear(), now.getMonth(), day)
+                    .toLocaleString('default', { weekday: 'short' });
+                return `
+                    <div class="day-header ${day === currentDate ? 'current-daycol' : ''}">
+                        <div>${dayName}&nbsp;</div>
+                        <div><b>${day}</b></div>
+                    </div>
+                `;
+            }).join("");
         calendarGrid.appendChild(headerRow);
 
         // create hour rows
@@ -73,16 +83,33 @@
             timeCell.textContent = h;
             row.appendChild(timeCell);
 
-            daysOfWeek.forEach((_, dayIndex) => {
+            // daysOfWeek.forEach((_, dayIndex) => {
+            //     const cell = document.createElement("div");
+            //     cell.className = "cell";
+
+            //     if (dayIndex === currentDay && hourIndex === currentHour) {
+            //         cell.classList.add("current-time");
+            //     }
+
+            //     row.appendChild(cell);
+            // });
+
+            for (let day = 1; day <= daysInMonth; day++) {
                 const cell = document.createElement("div");
                 cell.className = "cell";
 
-                if (dayIndex === currentDay && hourIndex === currentHour) {
+                // highlight current day & hour
+                if (day === currentDate) {
+                    cell.classList.add("current-day");
+                }
+
+
+                if (day === currentDate && hourIndex === currentHour) {
                     cell.classList.add("current-time");
                 }
 
                 row.appendChild(cell);
-            });
+            }
 
             calendarGrid.appendChild(row);
         });
