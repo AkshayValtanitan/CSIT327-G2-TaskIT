@@ -215,90 +215,6 @@ def sync_google_user_supabase(request, user, **kwargs):
     request.session['email'] = email
 
 
-# def dashboard_view(request):
-#     if not request.session.get('user_id'):
-#         messages.error(request, "Please log in first.")
-#         return redirect('login')
-#     return render(request, 'dashboard.html')
-
-# def github_login(request):
-#     response = supabase.auth.sign_in_with_oauth({"provider": "github"})
-#     return redirect(response.url)
-
-# def github_callback(request):
-#     code = request.GET.get("code")
-    
-#     if code:
-#         session = supabase.auth.exchange_code_for_session(code)        <-------------Not working for now
-#         user = session.user 
-        
-#         request.session['user_id'] = user.id
-#         request.session['email'] = user.email
-        
-#         messages.success(request, "Logged in with GitHub successfully!")
-#         return redirect("/dashboard")
-#     else:
-#         messages.error(request, "GitHub login failed")
-#         return redirect("/login")
-
-
-# def login_view(request):
-#     password_error = None
-#     email_error = None
-#     username_error = None
-
-#     if request.method == "POST":
-#         password = request.POST.get("password")
-#         hashed_password = hashlib.sha256(password.encode()).hexdigest()
-
-#         email = request.POST.get("email")
-#         username = request.POST.get("username")
-        
-#         if email:
-#             response = supabase.table("users").select("*").eq("email", email).execute()
-#             user_data = response.data
-#             if user_data:
-#                 if user_data[0]["password"] == hashed_password:
-#                     request.session['user_id'] = user_data[0]['user_id']
-#                     request.session['email'] = user_data[0]['email']
-#                     messages.success(request, "Logged in successfully!")
-#                     return redirect("/dashboard")
-#                 else:
-#                     password_error = "Invalid password"
-#             else:
-#                 email_error = "Email not found"
-
-#         elif username:
-#             response = supabase.table("users").select("*").eq("username", username).execute()
-#             user_data = response.data
-#             if user_data:
-#                 if user_data[0]["password"] == hashed_password:
-#                     request.session['user_id'] = user_data[0]['user_id']
-#                     request.session['username'] = user_data[0]['username']
-#                     messages.success(request, "Logged in successfully!")
-#                     return redirect("/dashboard")
-#                 else:
-#                     password_error = "Invalid password"
-#             else:
-#                 username_error = "Username not found"
-
-#     return render(request, "login.html", {
-#         "password_error": password_error,
-#         "email_error": email_error,
-#         "username_error": username_error
-#     })
-
-
-
-#<a href="{% url 'github-login' %}" class="github-btn">Login with GitHub</a>
-# <img src="{% static 'login/images/login_bg.jpg' %}" alt="backgroundimage" width="300" height="200">
-
-
-# <!-- <button type="button" class="github-signin">
-#                     <img src="{% static 'login/images/github_logo.png' %}" alt="GitHub Logo">
-#                     GitHub
-#                 </button> -->
-
 
 @login_required(login_url='login')
 @require_http_methods(["GET", "POST"])
@@ -314,7 +230,7 @@ def tasks_api(request):
     if request.method == "GET":
         year = request.GET.get('year')
         month = request.GET.get('month')  # 0-based from JS
-        query = supabase.table("tasks").select("*").eq("user_id", user_id)
+        query = supabase.table("task").select("*").eq("user_id", user_id)
         if year is not None and month is not None:
             try:
                 y = int(year)
@@ -362,7 +278,7 @@ def tasks_api(request):
         "priority": priority,
         "status": status_val,
     }
-    resp = supabase.table("tasks").insert(insert_data).execute()
+    resp = supabase.table("task").insert(insert_data).execute()
     if not resp.data:
         return JsonResponse({"error": "Failed to create task"}, status=500)
     return JsonResponse({"task": resp.data[0]})
@@ -377,7 +293,7 @@ def task_detail_api(request, task_id: str):
 
     # Ensure the task belongs to the user
     if request.method == "GET":
-        resp = supabase.table("tasks").select("*").eq("id", task_id).eq("user_id", user_id).single().execute()
+        resp = supabase.table("task").select("*").eq("id", task_id).eq("user_id", user_id).single().execute()
         if not resp.data:
             return JsonResponse({"error": "Not found"}, status=404)
         return JsonResponse({"task": resp.data})
@@ -393,11 +309,11 @@ def task_detail_api(request, task_id: str):
                 update_fields[key] = payload[key]
         if not update_fields:
             return JsonResponse({"error": "No fields to update"}, status=400)
-        resp = supabase.table("tasks").update(update_fields).eq("id", task_id).eq("user_id", user_id).execute()
+        resp = supabase.table("task").update(update_fields).eq("id", task_id).eq("user_id", user_id).execute()
         if not resp.data:
             return JsonResponse({"error": "Update failed"}, status=500)
         return JsonResponse({"task": resp.data[0]})
 
     # DELETE
-    resp = supabase.table("tasks").delete().eq("id", task_id).eq("user_id", user_id).execute()
+    resp = supabase.table("task").delete().eq("id", task_id).eq("user_id", user_id).execute()
     return JsonResponse({"ok": True})
