@@ -224,6 +224,7 @@ def tasks_api(request):
     POST: create a new task for the logged-in user.
     """
     user_id = request.session.get('user_id') or str(request.user.id)
+    print(f"DEBUG: tasks_api user_id from session: {user_id}")
     if not user_id:
         return JsonResponse({"error": "Not authenticated"}, status=401)
 
