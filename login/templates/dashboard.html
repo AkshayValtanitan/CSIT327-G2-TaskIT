@@ -453,53 +453,55 @@
         }
 
         // Validation and submit
-        quickAddForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const title = taskTitle.value.trim();
-            const date = taskDate.value;
-            const hour = taskHour.value;
-            const color = taskColor.value;
-            const description = document.getElementById('taskDescription').value.trim();
+        // quickAddForm.addEventListener('submit', async (e) => {
+        //     e.preventDefault();
+        //     const title = taskTitle.value.trim();
+        //     const date = taskDate.value;
+        //     const hour = taskHour.value;
+        //     const color = taskColor.value;
+        //     const description = document.getElementById('taskDescription').value.trim();
+        //     const priority = document.getElementById('taskPriority').value;
+        //     const status = document.getElementById('taskStatus').value;
 
-            // simple validation
-            if (!title) {
-                formError.textContent = 'Title is required.';
-                taskTitle.focus();
-                return;
-            }
-            if (!date) {
-                formError.textContent = 'Date is required.';
-                taskDate.focus();
-                return;
-            }
-            if (hour === "" || hour == null) {
-                formError.textContent = 'Start hour is required.';
-                taskHour.focus();
-                return;
-            }
+        //     // simple validation
+        //     if (!title) {
+        //         formError.textContent = 'Title is required.';
+        //         taskTitle.focus();
+        //         return;
+        //     }
+        //     if (!date) {
+        //         formError.textContent = 'Date is required.';
+        //         taskDate.focus();
+        //         return;
+        //     }
+        //     if (hour === "" || hour == null) {
+        //         formError.textContent = 'Start hour is required.';
+        //         taskHour.focus();
+        //         return;
+        //     }
 
-            const payload = { title, date, hour, color, description, priority, status };
+        //     const payload = { title, date, hour, color, description, priority, status };
 
-            try {
-                if (editingTaskId) {
-                    // edit - PATCH to /api/tasks/<id>/
-                    await apiPatchTask(editingTaskId, payload);
-                    editingTaskId = null;
-                } else {
-                    // create - POST to /api/tasks/
-                    await apiCreateTask(payload);
-                }
-                // await apiCreateTask({
-                //     title, date, hour, color, description,
-                //     priority: document.getElementById('taskPriority').value,
-                //     status: document.getElementById('taskStatus').value
-                // });
-                closeModal();
-                await renderTasks();
-            } catch (err) {
-                formError.textContent = (err && err.message) || 'Failed to create task.';
-            }
-        });
+        //     try {
+        //         if (editingTaskId) {
+        //             // edit - PATCH to /api/tasks/<id>/
+        //             await apiPatchTask(editingTaskId, payload);
+        //             editingTaskId = null;
+        //         } else {
+        //             // create - POST to /api/tasks/
+        //             await apiCreateTask(payload);
+        //         }
+        //         // await apiCreateTask({
+        //         //     title, date, hour, color, description,
+        //         //     priority: document.getElementById('taskPriority').value,
+        //         //     status: document.getElementById('taskStatus').value
+        //         // });
+        //         closeModal();
+        //         await renderTasks();
+        //     } catch (err) {
+        //         formError.textContent = (err && err.message) || 'Failed to create task.';
+        //     }
+        // });
 
         // Initial render
         renderTasks();
