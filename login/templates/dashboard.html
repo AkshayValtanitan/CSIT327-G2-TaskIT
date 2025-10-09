@@ -72,16 +72,16 @@
                     <label>
                         <span>Priority</span>
                         <select id="taskPriority" name="priority">
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
                         </select>
                     </label>
                     <label>
                         <span>Status</span>
                         <select id="taskStatus" name="status">
-                            <option value="pending" selected>Unfinished</option>
-                            <option value="completed">Completed</option>
+                            <option value="Pending" selected>Unfinished</option>
+                            <option value="Completed">Completed</option>
                         </select>
                     </label>
                 </div>
@@ -111,6 +111,7 @@
         const taskHour = document.getElementById("taskHour");
         const taskColor = document.getElementById("taskColor");
         const formError = document.getElementById("formError");
+        let editingTaskId = null;
 
         const now = new Date();
         const currentDate = now.getDate();
@@ -207,6 +208,23 @@
             calendarGrid.appendChild(row);
         });
 
+        // CSRF helper (for Django POST, PATCH, DELETE)
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    const trimmed = cookie.trim();
+                    if (trimmed.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(trimmed.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
         // API helpers (Supabase via Django endpoints)
         const API_BASE = '/api/tasks/';
         async function apiGetTasks(year, month) {
@@ -219,7 +237,10 @@
         async function apiCreateTask(task) {
             const res = await fetch(API_BASE, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                 },
                 credentials: 'same-origin',
                 body: JSON.stringify(task)
             });
@@ -230,7 +251,10 @@
         async function apiPatchTask(id, patch) {
             const res = await fetch(`/api/tasks/${id}/`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
                 credentials: 'same-origin',
                 body: JSON.stringify(patch)
             });
@@ -300,12 +324,23 @@
             quickAddModal.classList.remove('hidden');
             quickAddModal.setAttribute('aria-hidden', 'false');
             taskTitle.focus();
+
+            editingTaskId = null;
+
+            document.getElementById('addTaskBtn').onclick = openModal;
+            const existingDelete = document.getElementById('deleteTaskBtn');
+            if (existingDelete) existingDelete.remove();
         }
         function closeModal() {
             quickAddModal.classList.add('hidden');
             quickAddModal.setAttribute('aria-hidden', 'true');
             quickAddForm.reset();
             formError.textContent = "";
+
+            editingTaskId = null;
+
+            const db = document.getElementById('deleteTaskBtn');
+            if (db) db.remove();
         }
 
         openQuickAdd.addEventListener('click', openModal);
@@ -327,6 +362,8 @@
             quickAddModal.classList.remove('hidden');
             quickAddModal.setAttribute('aria-hidden', 'false');
 
+            editingTaskId = task.id;
+
             const actions = document.querySelector('.modal-actions');
             let deleteBtn = document.getElementById('deleteTaskBtn');
             if (!deleteBtn) {
@@ -340,7 +377,11 @@
 
             deleteBtn.onclick = async () => {
                 try {
-                    await fetch(`/api/tasks/${task.id}/`, { method: 'DELETE', credentials: 'same-origin' });
+                    await fetch(`/api/tasks/${task.id}/`, {
+                        method: 'DELETE',
+                        headers: { 'X-CSRFToken': csrftoken },
+                        credentials: 'same-origin'
+                    });
                     closeModal();
                     await renderTasks();
                 } catch (e) {
@@ -351,25 +392,64 @@
             quickAddForm.onsubmit = async (e) => {
                 e.preventDefault();
                 const payload = {
-                    title: taskTitle.value.trim(),
+                    title: taskTitle.value,
                     date: taskDate.value,
-                    hour: taskHour.value,
+                    hour: parseInt(taskHour.value),
                     color: taskColor.value,
-                    description: document.getElementById('taskDescription').value.trim(),
+                    description: document.getElementById('taskDescription').value,
                     priority: document.getElementById('taskPriority').value,
-                    status: document.getElementById('taskStatus').value
+                    status: document.getElementById('taskStatus').value,
                 };
                 if (!payload.title) { formError.textContent = 'Title is required.'; return; }
                 if (!payload.date) { formError.textContent = 'Date is required.'; return; }
                 if (payload.hour === '' || payload.hour == null) { formError.textContent = 'Start hour is required.'; return; }
                 try {
-                    await apiPatchTask(task.id, payload);
+                    if (editingTaskId) {
+                        // Edit existing task
+                        await fetch(`/api/tasks/${editingTaskId}/`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(payload)
+                        });
+                    } else {
+                        // Create new task
+                        await fetch('/api/tasks/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(payload)
+                        });
+                    }
                     closeModal();
                     await renderTasks();
                 } catch (err) {
                     formError.textContent = err.message || 'Failed to update task';
                 }
             };
+
+            // quickAddForm.onsubmit = async (e) => {
+            //     e.preventDefault();
+            //     const payload = {
+            //         title: taskTitle.value.trim(),
+            //         date: taskDate.value,
+            //         hour: taskHour.value,
+            //         color: taskColor.value,
+            //         description: document.getElementById('taskDescription').value.trim(),
+            //         priority: document.getElementById('taskPriority').value,
+            //         status: document.getElementById('taskStatus').value
+            //     };
+            //     if (!payload.title) { formError.textContent = 'Title is required.'; return; }
+            //     if (!payload.date) { formError.textContent = 'Date is required.'; return; }
+            //     if (payload.hour === '' || payload.hour == null) { formError.textContent = 'Start hour is required.'; return; }
+            //     try {
+            //         await apiPatchTask(task.id, payload);
+            //         closeModal();
+            //         await renderTasks();
+            //     } catch (err) {
+            //         formError.textContent = err.message || 'Failed to update task';
+            //     }
+            // };
         }
 
         // Validation and submit
@@ -398,12 +478,22 @@
                 return;
             }
 
+            const payload = { title, date, hour, color, description, priority, status };
+
             try {
-                await apiCreateTask({
-                    title, date, hour, color, description,
-                    priority: document.getElementById('taskPriority').value,
-                    status: document.getElementById('taskStatus').value
-                });
+                if (editingTaskId) {
+                    // edit - PATCH to /api/tasks/<id>/
+                    await apiPatchTask(editingTaskId, payload);
+                    editingTaskId = null;
+                } else {
+                    // create - POST to /api/tasks/
+                    await apiCreateTask(payload);
+                }
+                // await apiCreateTask({
+                //     title, date, hour, color, description,
+                //     priority: document.getElementById('taskPriority').value,
+                //     status: document.getElementById('taskStatus').value
+                // });
                 closeModal();
                 await renderTasks();
             } catch (err) {
