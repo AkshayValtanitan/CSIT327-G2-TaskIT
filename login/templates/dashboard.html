@@ -298,6 +298,8 @@
                 const selector = `.cell[data-day="${day}"][data-hour="${hourIndex}"]`;
                 const cell = document.querySelector(selector);
                 if (!cell) return;
+
+                // ---- CALENDAR PILL (keeps existing color selection) ----
                 const pill = document.createElement('div');
                 pill.className = 'event-pill';
                 pill.textContent = t.title;
@@ -307,13 +309,35 @@
                 pill.addEventListener('click', () => openEditModal(t));
                 cell.appendChild(pill);
 
-                // also list item
+                // ---- COLOR CODED LIST ITEM ----
                 const li = document.createElement('li');
-                li.textContent = `${t.title} — ${t.priority || 'medium'} — ${d.toLocaleDateString()} ${hours[hourIndex]}`;
+                li.textContent = `${t.title} — ${t.priority || 'Medium'} — ${d.toLocaleDateString()} ${hours[hourIndex]}`;
                 li.style.cursor = 'pointer';
                 li.onclick = () => openEditModal(t);
-                if ((t.status||'pending') === 'completed') completed.appendChild(li); else unfinished.appendChild(li);
+
+                // automatic background color based on PRIORITY
+                let bgColor = '';
+                switch ((t.priority || 'medium').toLowerCase()) {
+                    case 'high': bgColor = '#ff6b6b'; break;   // red
+                    case 'medium': bgColor = '#fbc02d'; break; // yellow
+                    case 'low': bgColor = '#81c784'; break;    // green
+                    default: bgColor = '#cfd8dc';              // gray fallback
+                }
+
+                li.style.backgroundColor = bgColor;
+                li.style.padding = '6px 10px';
+                li.style.borderRadius = '6px';
+                li.style.marginBottom = '4px';
+                li.style.color = '#222';
+
+                // append based on status
+                if ((t.status || 'pending').toLowerCase() === 'completed') {
+                    completed.appendChild(li);
+                } else {
+                    unfinished.appendChild(li);
+                }
             });
+
         }
 
         // Modal controls
