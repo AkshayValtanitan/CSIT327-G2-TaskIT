@@ -164,3 +164,17 @@ button:hover {
     width: 20px;
     height: 20px;
 }
+
+.messages {
+    margin-bottom: 15px;
+}
+
+.error-message {
+    color: #ff3b3b;
+    background-color: #ffecec;
+    border: 1px solid #ff9e9e;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 500;
+}
