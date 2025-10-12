@@ -12,8 +12,9 @@ from django.utils import timezone
 from django.contrib import messages
 from taskit_project.supabase_client import supabase
 from django.views.decorators.csrf import csrf_exempt
-import hashlib
+import hashlib  
 import uuid
+from .forms import RegisterForm
 
 SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
@@ -100,41 +101,85 @@ def login_view(request):
         "username_error": username_error
     })
 
+
+
+# def register_view(request):
+#     if request.method == "POST":
+#         first_name = request.POST.get("first_name")
+#         last_name = request.POST.get("last_name")
+#         username = request.POST.get("username")
+#         email = request.POST.get("email")
+#         password = request.POST.get("password")
+#         confirm_password = request.POST.get("confirm_password")
+#         google_id = request.POST.get("google_id") or None
+
+#         if password != confirm_password:
+#             messages.error(request, "Passwords do not match.")
+#             return render(request, "register.html")
+
+#         hashed_password = hashlib.sha256(password.encode()).hexdigest()
+
+#         user_id = str(uuid.uuid4())
+
+#         response = supabase.table("users").insert({
+#             "user_id": user_id,
+#             "first_name": first_name,
+#             "last_name": last_name,
+#             "username": username,
+#             "email": email,
+#             "password": hashed_password,
+#             "google_id": google_id
+#         }).execute()
+
+#         if response.data:
+#             messages.success(request, "Account created successfully! Please log in.")
+#             return redirect("login")
+#         else:
+#             messages.error(request, "Error creating account. Try again.")
+
+#     return render(request, "register.html")
+
 def register_view(request):
     if request.method == "POST":
-        first_name = request.POST.get("first_name")
-        last_name = request.POST.get("last_name")
-        username = request.POST.get("username")
-        email = request.POST.get("email")
-        password = request.POST.get("password")
-        confirm_password = request.POST.get("confirm_password")
-        google_id = request.POST.get("google_id") or None
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            first_name = data["first_name"]
+            last_name = data["last_name"]
+            username = data["username"]
+            email = data["email"]
+            password = data["password"]
+            confirm_password = data["confirm_password"]
+            google_id = request.POST.get("google_id") or None
 
-        if password != confirm_password:
-            messages.error(request, "Passwords do not match.")
-            return render(request, "register.html")
+            if password != confirm_password:
+                messages.error(request, "Passwords do not match.")
+                return render(request, "register.html", {"form": form})
 
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+            hashed_password = hashlib.sha256(password.encode()).hexdigest()
+            user_id = str(uuid.uuid4())
 
-        user_id = str(uuid.uuid4())
+            response = supabase.table("users").insert({
+                "user_id": user_id,
+                "first_name": first_name,
+                "last_name": last_name,
+                "username": username,
+                "email": email,
+                "password": hashed_password,
+                "google_id": google_id
+            }).execute()
 
-        response = supabase.table("users").insert({
-            "user_id": user_id,
-            "first_name": first_name,
-            "last_name": last_name,
-            "username": username,
-            "email": email,
-            "password": hashed_password,
-            "google_id": google_id
-        }).execute()
-
-        if response.data:
-            messages.success(request, "Account created successfully! Please log in.")
-            return redirect("login")
+            if response.data:
+                messages.success(request, "Account created successfully! Please log in.")
+                return redirect("login")
+            else:
+                messages.error(request, "Error creating account. Try again.")
         else:
-            messages.error(request, "Error creating account. Try again.")
+            messages.error(request, "Please fill in all required fields.")
+    else:
+        form = RegisterForm()
 
-    return render(request, "register.html")
+    return render(request, "register.html", {"form": form})
 
 @login_required(login_url='login')
 def dashboard_view(request):

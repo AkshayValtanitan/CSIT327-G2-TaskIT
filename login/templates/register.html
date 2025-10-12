@@ -14,8 +14,16 @@
         <h2>Create Account</h2>
             <form method="POST">
                 {% csrf_token %}
-                
-                <label>First Name</label>
+                {{ form.as_p }}
+            {% if messages %}
+            <div class="messages">
+                    {% for message in messages %}
+                        <p class="error-message">{{ message }}</p>
+                    {% endfor %}
+            </div>
+            {% endif %}
+
+                <!-- <label>First Name</label>
                 <input type="text" name="first_name" required>
 
                 <label>Last Name</label>
@@ -31,10 +39,11 @@
                 <input type="password" name="password" required>
 
                 <label>Confirm Password</label>
-                <input type="password" name="confirm_password" required>
+                <input type="password" name="confirm_password" required> -->
                 
                 <!-- Optional Google ID (hidden for now) -->
                 <input type="hidden" name="google_id">
+
 
                 <button type="submit">Register</button>
 
