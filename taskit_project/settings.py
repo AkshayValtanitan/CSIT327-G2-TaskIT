@@ -38,6 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "login",
+    "register",
+    "dashboard",
+    "tasks",
 
     "django.contrib.sites",  # needed for allauth
     "allauth",

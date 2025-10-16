@@ -178,3 +178,18 @@ button:hover {
     text-align: center;
     font-weight: 500;
 }
+
+.form-field {
+    margin-bottom: 15px;
+}
+
+.field-error {
+    color: #ff4d4d;
+    font-size: 0.9em;
+    margin-top: 4px;
+}
+
+input:user-invalid {
+    border: 1px solid #ff4d4d;
+}
+
