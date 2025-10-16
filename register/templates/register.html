@@ -14,14 +14,29 @@
         <h2>Create Account</h2>
             <form method="POST">
                 {% csrf_token %}
-                {{ form.as_p }}
+                {% for field in form %}
+                    <div class="form-field">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+
+                        {% if field.errors %}
+                            {% for error in field.errors %}
+                                <p class="field-error">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
             {% if messages %}
             <div class="messages">
-                    {% for message in messages %}
+                {% for message in messages %}
+                    {% if 'error' in message.tags %}
                         <p class="error-message">{{ message }}</p>
-                    {% endfor %}
+                    {% endif %}
+                {% endfor %}
             </div>
             {% endif %}
+
 
                 <!-- <label>First Name</label>
                 <input type="text" name="first_name" required>
