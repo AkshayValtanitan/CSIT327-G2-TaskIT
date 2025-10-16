@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.contrib import messages
 from taskit_project.supabase_client import supabase
 import hashlib
+from .models import LoginAttempt
 
 SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
@@ -27,6 +28,7 @@ def login_view(request):
         if not password:
             password_error = "Password is required"
 
+        # LOGIN BY EMAIL
         if email:
             response = supabase.table("users").select("*").eq("email", email).execute()
             user_data = response.data
@@ -44,6 +46,7 @@ def login_view(request):
 
                     # Log in the Django user (for @login_required)
                     auth_login(request, user)
+                    LoginAttempt.objects.create(user=user, success=True)
 
                     # Store additional info in session if needed
                     request.session['user_id'] = user_data[0]['user_id']
@@ -57,12 +60,14 @@ def login_view(request):
                     # messages.success(request, "Logged in successfully!")
                     # return redirect("/dashboard")
                 else:
+                    LoginAttempt.objects.create(email_or_username=email, success=False)
                     password_error = "Invalid password"
             else:
                 email_error = "Email not found"
         elif username:
             response = supabase.table("users").select("*").eq("username", username).execute()
             user_data = response.data
+            # LOGIN BY USERNAME
             if user_data:
                 if user_data[0]["password"] == hashlib.sha256(password.encode()).hexdigest():
 
@@ -75,6 +80,7 @@ def login_view(request):
                         user.save()
 
                     auth_login(request, user)
+                    LoginAttempt.objects.create(user=user, success=True)
 
                     request.session['user_id'] = user_data[0]['user_id']
                     request.session['username'] = user_data[0]['username']
@@ -87,6 +93,7 @@ def login_view(request):
                     # messages.success(request, "Logged in successfully!")
                     # return redirect("/dashboard")
                 else:
+                    LoginAttempt.objects.create(email_or_username=username, success=False)
                     password_error = "Invalid password"
             else:
                 username_error = "Username not found"
@@ -163,13 +170,27 @@ def sync_google_user_supabase(request, user, **kwargs):
             "Prefer": "return=representation"
         }
     )
-
-    if response.status_code not in (200, 201):
-        print("Supabase upsert error:", response.text)
+    supabase_data = response.json()
+    if isinstance(supabase_data, list) and len(supabase_data) > 0 and "user_id" in supabase_data[0]:
+        supabase_user_id = supabase_data[0]["user_id"]
     else:
-        print("Google user synced with Supabase:", user.email)
+        # if da user already exists ,fetch the UUID from supabase
+        get_response = requests.get(
+            f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}?email=eq.{email}",
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+            }
+        )
+        existing_data = get_response.json()
+        if isinstance(existing_data, list) and len(existing_data) > 0:
+            supabase_user_id = existing_data[0]["user_id"]
+        else:
+            supabase_user_id = None  # fallback
 
-    # Save info in session
-    request.session['user_id'] = str(user.id)
+    request.session['user_id'] = supabase_user_id
     request.session['email'] = email
+    print("DEBUG: Stored user_id in session:", request.session.get("user_id"))
+
 
