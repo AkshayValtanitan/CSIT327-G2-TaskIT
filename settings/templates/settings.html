@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Calendar</title>
+    <link rel="stylesheet" href="{% static 'login/css/settings.css' %}?v={% now 'U' %}">
+</head>
+<body class="{% if request.session.theme == 'dark' %}dark-mode{% endif %}">
+    <div class="sidebar">
+        <h2>Settings page</h2>
+        <button id="theme-toggle">Toggle Theme</button>
+        <form method="get" action="{% url 'dashboard' %}">
+            <button type="submit">Dashboard</button>
+        </form>
+        <form method="get" action="{% url 'settings' %}">
+            <button type="submit">Settings</button>
+        </form>
+        <form action="{% url 'logout' %}" method="POST">
+            {% csrf_token %}
+            <button type="submit">Log Out</button>
+        </form>
+    </div>
+
+    <div class="main">
+        <h1>Welcome User!</h1>
+        <p>This is the settings page.</p>
+    </div>
+    <script>
+        const toggle = document.getElementById("theme-toggle");
+        const body = document.body; 
+
+        if (localStorage.getItem("theme") === "dark") {
+        body.classList.add("dark-mode");
+        }
+
+        toggle.addEventListener("click", () => {
+            body.classList.toggle("dark-mode");
+            const theme = body.classList.contains("dark-mode") ? "dark" : "light";
+            localStorage.setItem("theme", theme);
+        });
+    </script>
+</body>
+</html>
