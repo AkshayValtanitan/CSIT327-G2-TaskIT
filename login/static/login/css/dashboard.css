@@ -256,11 +256,22 @@ body.dark-mode{
 
 body.dark-mode .sidebar{
     background-color: #535353;
-    color: #242424;
+    color: #dadada;
+}
+
+body.dark-mode .header-row{
+    background-color: rgba(49, 49, 49, 0.3);
+    border: 1px solid #818181;
+    color: #ffffff;
 }
 
 body.dark-mode .day-header{
-    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid #818181;
+    color: #ffffff;
+}
+
+body.dark-mode .time-col{
+    background-color: #535353;
     border: 1px solid #818181;
     color: #ffffff;
 }

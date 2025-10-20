@@ -11,6 +11,12 @@
     <div class="sidebar">
         <h2>Dashboard</h2>
         <button id="theme-toggle">Toggle Theme</button>
+        <form method="get" action="{% url 'dashboard' %}">
+            <button type="submit">Dashboard</button>
+        </form>
+        <form method="get" action="{% url 'settings' %}">
+            <button type="submit">Settings</button>
+        </form>
         <form action="{% url 'logout' %}" method="POST">
             {% csrf_token %}
             <button type="submit">Log Out</button>
