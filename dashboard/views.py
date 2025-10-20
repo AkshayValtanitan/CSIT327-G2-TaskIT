@@ -16,12 +16,4 @@ def dashboard_view(request):
 
 @login_required(login_url='login')
 def settings_view(request):
-    # Persist theme preference in session for server-rendered pages
-    if request.method == 'POST':
-        theme = (request.POST.get('theme') or '').strip().lower()
-        if theme in ('light', 'dark'):
-            request.session['theme'] = theme
-        return redirect('settings')
-
-    current_theme = request.session.get('theme', 'light')
-    return render(request, 'settings.html', { 'current_theme': current_theme })
+    return render(request, 'settings.html')

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "register",
     "dashboard",
     "tasks",
+    "settings",
 
     "django.contrib.sites",  # needed for allauth
     "allauth",
