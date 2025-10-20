@@ -7,9 +7,10 @@
     <title>Weekly Calendar</title>
     <link rel="stylesheet" href="{% static 'login/css/dashboard.css' %}?v={% now 'U' %}">
 </head>
-<body>
+<body class="{% if request.session.theme == 'dark' %}dark-mode{% endif %}">
     <div class="sidebar">
         <h2>Dashboard</h2>
+        <button id="theme-toggle">Toggle Theme</button>
         <form action="{% url 'logout' %}" method="POST">
             {% csrf_token %}
             <button type="submit">Log Out</button>
@@ -111,6 +112,8 @@
         const taskHour = document.getElementById("taskHour");
         const taskColor = document.getElementById("taskColor");
         const formError = document.getElementById("formError");
+        const toggle = document.getElementById("theme-toggle");
+        const body = document.body;
         let editingTaskId = null;
 
         const now = new Date();
@@ -132,6 +135,16 @@
             const hour = i % 12 || 12;
             const ampm = i < 12 ? "AM" : "PM";
             return `${hour} ${ampm}`;
+        });
+
+        if (localStorage.getItem("theme") === "dark") {
+            body.classList.add("dark-mode");
+        }
+
+        toggle.addEventListener("click", () => {
+            body.classList.toggle("dark-mode");
+            const theme = body.classList.contains("dark-mode") ? "dark" : "light";
+            localStorage.setItem("theme", theme);
         });
 
         // populate hour select in modal
@@ -174,17 +187,6 @@
             timeCell.className = "time-col";
             timeCell.textContent = h;
             row.appendChild(timeCell);
-
-            // daysOfWeek.forEach((_, dayIndex) => {
-            //     const cell = document.createElement("div");
-            //     cell.className = "cell";
-
-            //     if (dayIndex === currentDay && hourIndex === currentHour) {
-            //         cell.classList.add("current-time");
-            //     }
-
-            //     row.appendChild(cell);
-            // });
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const cell = document.createElement("div");
@@ -412,45 +414,6 @@
                     formError.textContent = 'Failed to delete task';
                 }
             };
-
-            // quickAddForm.onsubmit = async (e) => {
-            //     e.preventDefault();
-            //     const payload = {
-            //         title: taskTitle.value,
-            //         date: taskDate.value,
-            //         hour: parseInt(taskHour.value),
-            //         color: taskColor.value,
-            //         description: document.getElementById('taskDescription').value,
-            //         priority: document.getElementById('taskPriority').value,
-            //         status: document.getElementById('taskStatus').value,
-            //     };
-            //     if (!payload.title) { formError.textContent = 'Title is required.'; return; }
-            //     if (!payload.date) { formError.textContent = 'Date is required.'; return; }
-            //     if (payload.hour === '' || payload.hour == null) { formError.textContent = 'Start hour is required.'; return; }
-            //     try {
-            //         if (editingTaskId) {
-            //             // Edit existing task
-            //             await fetch(`/api/tasks/${editingTaskId}/`, {
-            //                 method: 'PATCH',
-            //                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-            //                 credentials: 'same-origin',
-            //                 body: JSON.stringify(payload)
-            //             });
-            //         } else {
-            //             // Create new task
-            //             await fetch('/api/tasks/', {
-            //                 method: 'POST',
-            //                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-            //                 credentials: 'same-origin',
-            //                 body: JSON.stringify(payload)
-            //             });
-            //         }
-            //         closeModal();
-            //         await renderTasks();
-            //     } catch (err) {
-            //         formError.textContent = err.message || 'Failed to update task';
-            //     }
-            // };
         }
 
         // Validation and submit
@@ -516,26 +479,6 @@
                 console.error(err);
                 formError.textContent = err.message || 'Failed to save task.';
             }
-
-            // try {
-            //     if (editingTaskId) {
-            //         // edit - PATCH to /api/tasks/<id>/
-            //         await apiPatchTask(editingTaskId, payload);
-            //         editingTaskId = null;
-            //     } else {
-            //         // create - POST to /api/tasks/
-            //         await apiCreateTask(payload);
-            //     }
-            //     // await apiCreateTask({
-            //     //     title, date, hour, color, description,
-            //     //     priority: document.getElementById('taskPriority').value,
-            //     //     status: document.getElementById('taskStatus').value
-            //     // });
-            //     closeModal();
-            //     await renderTasks();
-            // } catch (err) {
-            //     formError.textContent = (err && err.message) || 'Failed to create task.';
-            // }
         });
 
         // Initial render
