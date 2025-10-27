@@ -1,4 +1,5 @@
 import requests
+from django.http import HttpResponse
 from django.contrib.auth import login as auth_login, get_user_model
 from django.shortcuts import render, redirect
 from allauth.account.signals import user_logged_in
@@ -15,6 +16,18 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 SUPABASE_TABLE = "users"
 
 User = get_user_model()
+
+def create_superuser(request):
+    User = get_user_model()
+    if not User.objects.filter(username="shanenathan").exists():
+        User.objects.create_superuser(
+            username="shanenathan",
+            email="shanenathanarchival@gmail.com",
+            password="YOUR_PASSWORD_HERE"
+        )
+        return HttpResponse("Superuser created successfully!")
+    else:
+        return HttpResponse("Superuser already exists.")
 
 def login_view(request):
     password_error = None
