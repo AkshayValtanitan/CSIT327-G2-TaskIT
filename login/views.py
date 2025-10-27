@@ -8,6 +8,7 @@ from django.contrib import messages
 from taskit_project.supabase_client import supabase
 import hashlib
 from .models import LoginAttempt
+from .models import SupabaseUser
 
 SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
@@ -52,6 +53,17 @@ def login_view(request):
                     request.session['user_id'] = user_data[0]['user_id']
                     request.session['email'] = user_data[0]['email']
 
+                    supabase_user_id = user_data[0]["user_id"]
+                    SupabaseUser.objects.update_or_create(
+                        user=user,
+                        defaults={
+                            "supabase_user_id": supabase_user_id,
+                            "email": user_data[0]["email"],
+                            "username": user_data[0]["username"],
+                            "last_login": timezone.now(),
+                        },
+                    )
+
                     messages.success(request, "Logged in successfully!")
                     return redirect("/dashboard/")
 
@@ -84,6 +96,17 @@ def login_view(request):
 
                     request.session['user_id'] = user_data[0]['user_id']
                     request.session['username'] = user_data[0]['username']
+
+                    supabase_user_id = user_data[0]["user_id"]
+                    SupabaseUser.objects.update_or_create(
+                        user=user,
+                        defaults={
+                            "supabase_user_id": supabase_user_id,
+                            "email": user_data[0]["email"],
+                            "username": user_data[0]["username"],
+                            "last_login": timezone.now(),
+                        },
+                    )
 
                     messages.success(request, "Logged in successfully!")
                     return redirect("/dashboard/")
@@ -192,5 +215,4 @@ def sync_google_user_supabase(request, user, **kwargs):
     request.session['user_id'] = supabase_user_id
     request.session['email'] = email
     print("DEBUG: Stored user_id in session:", request.session.get("user_id"))
-
 
