@@ -69,7 +69,63 @@ def tasks_api(request):
         "color": task.color,
     }})
 
+@login_required(login_url='login')
+@require_http_methods(["GET", "PATCH", "DELETE"])
+def task_detail_api(request, task_id: str):
+    user = request.user
 
+    try:
+        task = Task.objects.get(task_id=task_id, user=user)
+    except Task.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse({
+            "task": {
+                "id": str(task.task_id),
+                "task_name": task.task_name,
+                "priority": task.priority,
+                "status": task.status,
+                "date": str(task.date),
+                "hour": task.hour,
+                "color": task.color,
+                "description": task.description,
+            }
+        })
+
+    elif request.method == "PATCH":
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            return HttpResponseBadRequest("Invalid JSON")
+
+        updated = False
+        for field in ["task_name", "description", "date", "hour", "color", "priority", "status"]:
+            if field in payload and payload[field] is not None:
+                setattr(task, field, payload[field])
+                updated = True
+
+        if not updated:
+            return JsonResponse({"error": "No fields to update"}, status=400)
+
+        task.save()
+        return JsonResponse({
+            "task": {
+                "id": str(task.task_id),
+                "task_name": task.task_name,
+                "priority": task.priority,
+                "status": task.status,
+                "date": str(task.date),
+                "hour": task.hour,
+                "color": task.color,
+                "description": task.description,
+            }
+        })
+
+    elif request.method == "DELETE":
+        task.delete()
+        return JsonResponse({"ok": True})
+    
 # @login_required(login_url='login')
 # @require_http_methods(["GET", "POST"])
 # def tasks_api(request):
