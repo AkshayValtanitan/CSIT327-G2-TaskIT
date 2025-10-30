@@ -113,10 +113,11 @@ DATABASES = {
         "NAME": "postgres",
         "USER": "postgres",
         "PASSWORD": "N0V11Fr1092Oo9",
-        "HOST": "aws-1-us-east-2.pooler.supabase.com",
+        # "HOST": "aws-1-us-east-2.pooler.supabase.com",    
+        "HOST": "db.bwaczilydwpkqlrxdjoq.supabase.co",
         "PORT": "5432",
         "OPTIONS": {
-            "sslmode": "require",  # Supabase requires SSL
+            "sslmode": "require",
         },
     }
 }
