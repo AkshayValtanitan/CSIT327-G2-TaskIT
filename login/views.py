@@ -146,6 +146,7 @@ def login_view(request):
     password_error = None
     email_error = None
     username_error = None
+    general_error = None
 
     if request.method == "POST":
         password = request.POST.get("password", "").strip()
@@ -155,57 +156,62 @@ def login_view(request):
         if not password:
             password_error = "Password is required"
 
+        if email and username:
+            general_error = "Please use either email or username, not both."
+        elif not email and not username:
+            general_error = "Please enter either email or username."
+
         user_data = None
 
-        if email:
-            try:
-                user_data = SupabaseUser.objects.get(email=email)
-            except SupabaseUser.DoesNotExist:
-                email_error = "Email not found"
-                LoginAttempt.objects.create(email_or_username=email, success=False)
+        if not general_error:
+            if email:
+                try:
+                    user_data = SupabaseUser.objects.get(email=email)
+                except SupabaseUser.DoesNotExist:
+                    email_error = "Email not found"
+                    LoginAttempt.objects.create(email_or_username=email, success=False)
 
-        elif username:
-            try:
-                user_data = SupabaseUser.objects.get(username=username)
-            except SupabaseUser.DoesNotExist:
-                username_error = "Username not found"
-                LoginAttempt.objects.create(email_or_username=username, success=False)
+            elif username:
+                try:
+                    user_data = SupabaseUser.objects.get(username=username)
+                except SupabaseUser.DoesNotExist:
+                    username_error = "Username not found"
+                    LoginAttempt.objects.create(email_or_username=username, success=False)
 
-        if user_data and password:
-            if user_data.password == hashlib.sha256(password.encode()).hexdigest():
-                user, created = User.objects.get_or_create(
-                    username=user_data.username or user_data.email.split("@")[0],
-                    defaults={"email": user_data.email}
-                )
-                if created:
-                    user.set_password(password)
-                    user.save()
+            if user_data and password:
+                if user_data.password == hashlib.sha256(password.encode()).hexdigest():
+                    user, created = User.objects.get_or_create(
+                        username=user_data.username or user_data.email.split("@")[0],
+                        defaults={"email": user_data.email}
+                    )
+                    if created:
+                        user.set_password(password)
+                        user.save()
 
-                auth_login(request, user)
+                    auth_login(request, user)
 
-                user_data.last_login = timezone.now()
-                user_data.save(update_fields=["last_login"])
+                    user_data.last_login = timezone.now()
+                    user_data.save(update_fields=["last_login"])
 
-                request.session["user_id"] = str(user_data.user_id)
-                request.session["email"] = user_data.email
-                request.session["username"] = user_data.username
+                    request.session["user_id"] = str(user_data.user_id)
+                    request.session["email"] = user_data.email
+                    request.session["username"] = user_data.username
 
-                LoginAttempt.objects.create(user=user, success=True)
+                    LoginAttempt.objects.create(user=user, success=True)
 
-                messages.success(request, "Logged in successfully!")
-                return redirect("/dashboard/")
-            else:
-                password_error = "Invalid password"
-                LoginAttempt.objects.create(email_or_username=email or username, success=False)
-
-        elif not email and not username:
-            messages.error(request, "Please enter either email or username")
+                    messages.success(request, "Logged in successfully!")
+                    return redirect("/dashboard/")
+                else:
+                    password_error = "Invalid password"
+                    LoginAttempt.objects.create(email_or_username=email or username, success=False)
 
     return render(request, "login.html", {
         "password_error": password_error,
         "email_error": email_error,
         "username_error": username_error,
+        "general_error": general_error,
     })
+
 
 def logout_view(request):
     request.session.flush() 
