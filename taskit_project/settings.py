@@ -107,10 +107,18 @@ WSGI_APPLICATION = 'taskit_project.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': 'bwaczilydwpkqlrxdjoq.supabase.co',
+        'PORT': '5432',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'N0V11Fr1092Oo9',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
 }
+
 
 
 # Password validation

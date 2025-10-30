@@ -5,10 +5,11 @@ from taskit_project.supabase_client import supabase
 import hashlib  
 import uuid
 from .forms import RegisterForm
+from login.models import User
 
-SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
-SUPABASE_TABLE = "users"
+# SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
+# SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
+# SUPABASE_TABLE = "users"
 
 User = get_user_model()
 
@@ -32,21 +33,38 @@ def register_view(request):
             hashed_password = hashlib.sha256(password.encode()).hexdigest()
             user_id = str(uuid.uuid4())
 
-            response = supabase.table("users").insert({
-                "user_id": user_id,
-                "first_name": first_name,
-                "last_name": last_name,
-                "username": username,
-                "email": email,
-                "password": hashed_password,
-                "google_id": google_id
-            }).execute()
-
-            if response.data:
+            try:
+                user = User.objects.create(
+                    user_id=user_id,
+                    first_name=first_name,
+                    last_name=last_name,
+                    username=username,
+                    email=email,
+                    password=hashed_password,
+                    google_id=google_id,
+                )
                 messages.success(request, "Account created successfully! Please log in.")
                 return redirect("login")
-            else:
+
+            except Exception as e:
+                print("Error creating user:", e)
                 messages.error(request, "Error creating account. Try again.")
+
+            # response = supabase.table("users").insert({
+            #     "user_id": user_id,
+            #     "first_name": first_name,
+            #     "last_name": last_name,
+            #     "username": username,
+            #     "email": email,
+            #     "password": hashed_password,
+            #     "google_id": google_id
+            # }).execute()
+
+            # if response.data:
+            #     messages.success(request, "Account created successfully! Please log in.")
+            #     return redirect("login")
+            # else:
+            #     messages.error(request, "Error creating account. Try again.")
         else:
             messages.error(request, "Please fill in all required fields.")
     else:
