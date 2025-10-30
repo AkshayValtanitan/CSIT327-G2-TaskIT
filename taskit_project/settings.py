@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-azd$phqw6zsaa8+^hf$3&jam2kghwp*2jf9pb$#y25it%%6@ch
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['csit327-g2-taskit.onrender.com']
+ALLOWED_HOSTS = ['csit327-g2-taskit.onrender.com','localhost','127.0.0.1']
 
 
 # Application definition
@@ -78,6 +78,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "allauth.account.middleware.AccountMiddleware",
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'taskit_project.urls'
@@ -146,8 +148,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static'] 
+# STATICFILES_DIRS = [BASE_DIR / 'login' / 'static'] 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
