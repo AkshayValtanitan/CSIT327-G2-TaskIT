@@ -113,9 +113,6 @@ DATABASES = {
         'NAME': 'postgres',
         'USER': 'postgres',
         'PASSWORD': 'N0V11Fr1092Oo9',
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
     }
 }
 
