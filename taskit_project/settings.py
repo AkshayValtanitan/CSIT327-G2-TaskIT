@@ -108,17 +108,23 @@ WSGI_APPLICATION = 'taskit_project.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    "default": dj_database_url.config(default=os.getenv("DATABASE_URL"), conn_max_age=600, ssl_require=True)
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.postgresql',
-    #     'HOST': 'postgresql://postgres.bwaczilydwpkqlrxdjoq:N0V11Fr1092Oo9@aws-1-us-east-2.pooler.supabase.com:5432/postgres',
-    #     'PORT': '5432',
-    #     'NAME': 'postgres',
-    #     'USER': 'postgres',
-    #     'PASSWORD': 'N0V11Fr1092Oo9',
-    # }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "postgres",
+        "USER": "postgres",
+        "PASSWORD": "N0V11Fr1092Oo9",
+        "HOST": "aws-1-us-east-2.pooler.supabase.com",
+        "PORT": "5432",
+        "OPTIONS": {
+            "sslmode": "require",  # Supabase requires SSL
+        },
+    }
 }
-
+# postgresql://postgres.bwaczilydwpkqlrxdjoq:N0V11Fr1092Oo9@aws-1-us-east-2.pooler.supabase.com:5432/postgres
+if os.getenv("DATABASE_URL"):
+    DATABASES["default"] = dj_database_url.config(
+        default=os.getenv("DATABASE_URL"), conn_max_age=600, ssl_require=True
+    )
 
 
 # Password validation
