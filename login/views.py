@@ -8,8 +8,7 @@ from django.utils import timezone
 from django.contrib import messages
 # from taskit_project.supabase_client import supabase
 import hashlib
-from .models import LoginAttempt
-from .models import SupabaseUser
+from .models import Users, SupabaseUser, LoginAttempt
 
 # SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
 # SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
@@ -166,22 +165,21 @@ def login_view(request):
         if not general_error:
             if email:
                 try:
-                    user_data = SupabaseUser.objects.get(email=email)
-                except SupabaseUser.DoesNotExist:
+                    user_data = Users.objects.get(email=email)
+                except Users.DoesNotExist:
                     email_error = "Email not found"
-                    LoginAttempt.objects.create(email_or_username=email, success=False)
 
             elif username:
                 try:
-                    user_data = SupabaseUser.objects.get(username=username)
-                except SupabaseUser.DoesNotExist:
+                    user_data = Users.objects.get(username=username)
+                except Users.DoesNotExist:
                     username_error = "Username not found"
-                    LoginAttempt.objects.create(email_or_username=username, success=False)
 
             if user_data and password:
-                if user_data.password == hashlib.sha256(password.encode()).hexdigest():
+                hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                if user_data.password == hashed_password:
                     user, created = User.objects.get_or_create(
-                        username=user_data.username or user_data.email.split("@")[0],
+                        username=user_data.username,
                         defaults={"email": user_data.email}
                     )
                     if created:
@@ -190,20 +188,31 @@ def login_view(request):
 
                     auth_login(request, user)
 
+                    supa_user, _ = SupabaseUser.objects.update_or_create(
+                        user=user,
+                        defaults={
+                            "supabase_user_id": user_data.user_id,
+                            "email": user_data.email,
+                            "username": user_data.username,
+                            "last_login": timezone.now(),
+                        }
+                    )
+
                     user_data.last_login = timezone.now()
                     user_data.save(update_fields=["last_login"])
+
+                    LoginAttempt.objects.create(user=user, success=True)
 
                     request.session["user_id"] = str(user_data.user_id)
                     request.session["email"] = user_data.email
                     request.session["username"] = user_data.username
 
-                    LoginAttempt.objects.create(user=user, success=True)
-
                     messages.success(request, "Logged in successfully!")
                     return redirect("/dashboard/")
                 else:
                     password_error = "Invalid password"
-                    LoginAttempt.objects.create(email_or_username=email or username, success=False)
+                    if 'user' in locals():
+                        LoginAttempt.objects.create(user=user, success=False)
 
     return render(request, "login.html", {
         "password_error": password_error,
@@ -211,6 +220,7 @@ def login_view(request):
         "username_error": username_error,
         "general_error": general_error,
     })
+
 
 
 def logout_view(request):
