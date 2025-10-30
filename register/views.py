@@ -1,7 +1,7 @@
 from django.contrib.auth import login, get_user_model
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from taskit_project.supabase_client import supabase
+# from taskit_project.supabase_client import supabase
 import hashlib  
 import uuid
 from .forms import RegisterForm

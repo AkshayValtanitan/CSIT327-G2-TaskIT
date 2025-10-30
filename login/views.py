@@ -6,7 +6,7 @@ from allauth.account.signals import user_logged_in
 from django.dispatch import receiver
 from django.utils import timezone
 from django.contrib import messages
-from taskit_project.supabase_client import supabase
+# from taskit_project.supabase_client import supabase
 import hashlib
 from .models import LoginAttempt
 from .models import SupabaseUser
