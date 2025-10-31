@@ -37,7 +37,8 @@ class Users(models.Model):
     last_login = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        db_table = 'users'  # ✅ Django will manage this table now
+        managed = False
+        db_table = 'users'
 
     def __str__(self):
         return self.email

@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-azd$phqw6zsaa8+^hf$3&jam2kghwp*2jf9pb$#y25it%%6@ch'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = ['csit327-g2-taskit.onrender.com','localhost','127.0.0.1']
 
@@ -108,17 +108,43 @@ WSGI_APPLICATION = 'taskit_project.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Default to SQLite for local development
+# DATABASE_URL = os.getenv("DATABASE_URL")
+# if DATABASE_URL:
+#     DATABASES = {
+#         "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+#     }
+# else:
+#     DATABASES = {
+#         "default": {
+#             "ENGINE": "django.db.backends.postgresql",
+#             "NAME": "postgres",
+#             "USER": "postgres",
+#             "PASSWORD": "N0V11Fr1092Oo9",
+#             "HOST": "db.bwaczilydwpkqlrxdjoq.supabase.co",
+#             "PORT": "5432",
+#         }
+#     }
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "postgres",
+        "USER": "postgres",
+        "PASSWORD": "N0V11Fr1092Oo9",   
+        "HOST": "db.bwaczilydwpkqlrxdjoq.supabase.co",
+        "PORT": "5432",
+        "OPTIONS": {
+            "sslmode": "require",
+        },
     }
 }
+# "HOST": "aws-1-us-east-2.pooler.supabase.com",    
+# "HOST": "db.bwaczilydwpkqlrxdjoq.supabase.co",
+# postgresql://postgres.bwaczilydwpkqlrxdjoq:N0V11Fr1092Oo9@aws-1-us-east-2.pooler.supabase.com:5432/postgres
 # If DATABASE_URL is provided (e.g., in production), use it instead
-if os.getenv("DATABASE_URL"):
-    DATABASES["default"] = dj_database_url.config(
-        default=os.getenv("DATABASE_URL"), conn_max_age=600, ssl_require=True
-    )
+# if os.getenv("DATABASE_URL"):
+#     DATABASES["default"] = dj_database_url.config(
+#         default=os.getenv("DATABASE_URL"), conn_max_age=600, ssl_require=True
+#     )
 
 
 # Password validation
