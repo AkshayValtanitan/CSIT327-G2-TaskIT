@@ -173,6 +173,22 @@ if not DEBUG:  # only applies when deploying
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
+# FOR DEBUGGING
+if not DEBUG:
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {
+            "console": {"class": "logging.StreamHandler"},
+        },
+        "root": {
+            "handlers": ["console"],
+            "level": "INFO",
+        },
+    }
+
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

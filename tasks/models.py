@@ -22,8 +22,7 @@ class Category(models.Model):
     description = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
-        db_table = 'category'
+        db_table = 'category_table'
 
 class Task(models.Model):
     PRIORITY_CHOICES = [
@@ -61,5 +60,4 @@ class Task(models.Model):
     color = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
-        db_table = 'task'
+        db_table = 'tasks_table'
