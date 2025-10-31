@@ -24,5 +24,5 @@ urlpatterns = [
     path("register/", include("register.urls")),
     path("dashboard/", include("dashboard.urls")),
     path("api/", include("tasks.urls")),
-    path('settings/', include('settings.urls')),
+    path('settings/', include('user_settings.urls')),
 ]
