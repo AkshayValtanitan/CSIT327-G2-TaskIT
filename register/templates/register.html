@@ -65,10 +65,17 @@
                 <div class="divider">Or sign up with</div>
 
                 <div class="social-buttons">
+                    {% if google_enabled %}
                     <a href="{% provider_login_url 'google' %}" class="google-btn">
                         <img src="{% static 'login/images/google_logo.png' %}" alt="Google Logo" class="google-logo">
                         Sign up with Google
                     </a>
+                    {% else %}
+                    <div class="google-btn" style="opacity:0.6; pointer-events:none" title="Google sign-in not configured">
+                        <img src="{% static 'login/images/google_logo.png' %}" alt="Google Logo" class="google-logo">
+                        Sign up with Google
+                    </div>
+                    {% endif %}
                 </div>
             </form>
 

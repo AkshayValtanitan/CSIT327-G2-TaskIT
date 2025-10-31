@@ -61,10 +61,17 @@
             <div class="divider">Or continue with</div>
 
             <div class="social-buttons">
+                {% if google_enabled %}
                 <a href="{% provider_login_url 'google' %}" class="google-btn">
                     <img src="{% static 'login/images/google_logo.png' %}" alt="Google Logo" class="google-logo">
                     Sign in with Google
                 </a>
+                {% else %}
+                <div class="google-btn" style="opacity:0.6; pointer-events:none" title="Google sign-in not configured">
+                    <img src="{% static 'login/images/google_logo.png' %}" alt="Google Logo" class="google-logo">
+                    Sign in with Google
+                </div>
+                {% endif %}
             </div>
 
             <p class="register_btn">Don’t have an account?&nbsp;<a class="create_btn" href="{% url 'register' %}">Create one</a></p>
@@ -108,6 +115,7 @@
 
     </div>
 </div>
+
 
 </body>
 </html>

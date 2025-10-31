@@ -26,6 +26,24 @@
     <div class="main">
         <h1>Welcome User!</h1>
         <p>This is your dashboard.</p>
+        <div id="weeklySummary" style="display:flex; gap:16px; margin: 12px 0; flex-wrap: wrap;">
+            <div style="padding:12px 16px; border-radius:8px; background:#f1f5f9; min-width:180px;">
+                <div style="font-size:12px; color:#475569;">Week Range</div>
+                <div id="ws-range" style="font-weight:600;">—</div>
+            </div>
+            <div style="padding:12px 16px; border-radius:8px; background:#f1f5f9; min-width:120px;">
+                <div style="font-size:12px; color:#475569;">Total</div>
+                <div id="ws-total" style="font-weight:700; font-size:20px;">0</div>
+            </div>
+            <div style="padding:12px 16px; border-radius:8px; background:#e8f5e9; min-width:120px;">
+                <div style="font-size:12px; color:#2e7d32;">Completed</div>
+                <div id="ws-completed" style="font-weight:700; font-size:20px;">0</div>
+            </div>
+            <div style="padding:12px 16px; border-radius:8px; background:#fff8e1; min-width:120px;">
+                <div style="font-size:12px; color:#b26a00;">Pending</div>
+                <div id="ws-pending" style="font-weight:700; font-size:20px;">0</div>
+            </div>
+        </div>
         <div style="margin: 12px 0;">
             <button id="openQuickAdd" class="btn-primary">Quick Add Task</button>
         </div>
@@ -120,6 +138,10 @@
         const formError = document.getElementById("formError");
         const toggle = document.getElementById("theme-toggle");
         const body = document.body;
+        const wsRange = document.getElementById("ws-range");
+        const wsTotal = document.getElementById("ws-total");
+        const wsCompleted = document.getElementById("ws-completed");
+        const wsPending = document.getElementById("ws-pending");
         let editingTaskId = null;
 
         const now = new Date();
@@ -269,6 +291,11 @@
             if (!res.ok) throw new Error('Failed to update');
             return res.json();
         }
+        async function apiWeeklySummary() {
+            const res = await fetch('/api/tasks/summary/', { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('Failed to fetch weekly summary');
+            return res.json();
+        }
 
         // Render tasks onto calendar
         async function renderTasks() {
@@ -307,21 +334,23 @@
                 const cell = document.querySelector(selector);
                 if (!cell) return;
 
+                const displayTitle = t.title || t.task_name || '';
+
                 // ---- CALENDAR PILL (keeps existing color selection) ----
                 const pill = document.createElement('div');
                 pill.className = 'event-pill';
-                pill.textContent = t.title;
+                pill.textContent = displayTitle;
                 pill.style.backgroundColor = t.color || '#2e7d32';
                 pill.title = t.description || '';
-                pill.dataset.id = t.id;
-                pill.addEventListener('click', () => openEditModal(t));
+                pill.dataset.id = t.id || t.task_id;
+                pill.addEventListener('click', () => openEditModal({ ...t, title: displayTitle, id: t.id || t.task_id }));
                 cell.appendChild(pill);
 
                 // ---- COLOR CODED LIST ITEM ----
                 const li = document.createElement('li');
-                li.textContent = `${t.title} — ${t.priority || 'Medium'} — ${d.toLocaleDateString()} ${hours[hourIndex]}`;
+                li.textContent = `${displayTitle} — ${t.priority || 'Medium'} — ${d.toLocaleDateString()} ${hours[hourIndex]}`;
                 li.style.cursor = 'pointer';
-                li.onclick = () => openEditModal(t);
+                li.onclick = () => openEditModal({ ...t, title: displayTitle, id: t.id || t.task_id });
 
                 // automatic background color based on PRIORITY
                 let bgColor = '';
@@ -416,6 +445,7 @@
                     });
                     closeModal();
                     await renderTasks();
+                    await renderWeeklySummary();
                 } catch (e) {
                     formError.textContent = 'Failed to delete task';
                 }
@@ -480,6 +510,7 @@
                 editingTaskId = null; // reset edit mode
                 closeModal();
                 await renderTasks();
+                await renderWeeklySummary();
 
             } catch (err) {
                 console.error(err);
@@ -487,8 +518,24 @@
             }
         });
 
+        async function renderWeeklySummary() {
+            try {
+                const s = await apiWeeklySummary();
+                wsRange.textContent = `${new Date(s.start).toLocaleDateString()} - ${new Date(s.end).toLocaleDateString()}`;
+                wsTotal.textContent = s.total;
+                wsCompleted.textContent = s.completed;
+                wsPending.textContent = s.pending;
+            } catch (e) {
+                wsRange.textContent = '—';
+                wsTotal.textContent = '0';
+                wsCompleted.textContent = '0';
+                wsPending.textContent = '0';
+            }
+        }
+
         // Initial render
         renderTasks();
+        renderWeeklySummary();
     </script>
 </body>
 </html>

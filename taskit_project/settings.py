@@ -107,21 +107,14 @@ WSGI_APPLICATION = 'taskit_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Default to SQLite for local development
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "postgres",
-        "USER": "postgres",
-        "PASSWORD": "N0V11Fr1092Oo9",
-        # "HOST": "aws-1-us-east-2.pooler.supabase.com",    
-        "HOST": "db.bwaczilydwpkqlrxdjoq.supabase.co",
-        "PORT": "5432",
-        "OPTIONS": {
-            "sslmode": "require",
-        },
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
-# postgresql://postgres.bwaczilydwpkqlrxdjoq:N0V11Fr1092Oo9@aws-1-us-east-2.pooler.supabase.com:5432/postgres
+# If DATABASE_URL is provided (e.g., in production), use it instead
 if os.getenv("DATABASE_URL"):
     DATABASES["default"] = dj_database_url.config(
         default=os.getenv("DATABASE_URL"), conn_max_age=600, ssl_require=True
