@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     "register",
     "dashboard",
     "tasks",
-    "settings",
+    "user_settings",
 
     "django.contrib.sites",  # needed for allauth
     "allauth",
@@ -163,6 +163,15 @@ STATIC_URL = '/static/'
 # STATICFILES_DIRS = [BASE_DIR / 'login' / 'static'] 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Production security settings
+if not DEBUG:  # only applies when deploying
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
