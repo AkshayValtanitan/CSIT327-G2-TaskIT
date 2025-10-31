@@ -68,7 +68,7 @@ else:
         "NAME": "postgres",
         "USER": "postgres",
         "PASSWORD": "N0V11Fr1092Oo9",
-        "HOST": "db.bwaczilydwpkqlrxdjoq.supabase.co",
+        "HOST": "aws-1-us-east-2.pooler.supabase.com",
         "PORT": "5432",
         "OPTIONS": {"sslmode": "require"},
     }
