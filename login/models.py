@@ -23,8 +23,7 @@ class LoginAttempt(models.Model):
     def __str__(self):
         status = "Success" if self.success else "Failed"
         return f"{self.user.username} - {status} at {self.timestamp}"
-
-
+    
 class Users(models.Model):
     user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_name = models.CharField(max_length=100)
@@ -37,8 +36,26 @@ class Users(models.Model):
     last_login = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
-        db_table = 'users'
+        db_table = 'user_table'
 
     def __str__(self):
         return self.email
+
+
+# class Users(models.Model):
+#     user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     first_name = models.CharField(max_length=100)
+#     last_name = models.CharField(max_length=100)
+#     email = models.EmailField(unique=True, max_length=255)
+#     username = models.CharField(max_length=255, unique=True)
+#     password = models.CharField(max_length=255)
+#     google_id = models.CharField(max_length=255, blank=True, null=True)
+#     date_created = models.DateTimeField(auto_now_add=True)
+#     last_login = models.DateTimeField(blank=True, null=True)
+
+#     class Meta:
+#         managed = False
+#         db_table = 'users'
+
+#     def __str__(self):
+#         return self.email
