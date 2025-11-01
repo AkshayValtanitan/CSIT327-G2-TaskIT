@@ -6,7 +6,8 @@ from django.contrib.auth.decorators import login_required
 import uuid
 from django.utils import timezone
 from tasks.models import Task
-from login.models import Users
+# from login.models import Users
+from django.contrib.auth.models import User
 from datetime import timedelta
 
 User = get_user_model()
@@ -15,16 +16,18 @@ User = get_user_model()
 @require_http_methods(["GET", "POST"])
 def tasks_api(request):
     # Get Supabase user
-    try:
-        supabase_user = Users.objects.get(email=request.user.email)
-    except Users.DoesNotExist:
-        return JsonResponse({"error": "Supabase user not found"}, status=404)
+    # try:
+    #     supabase_user = Users.objects.get(email=request.user.email)
+    # except Users.DoesNotExist:
+    #     return JsonResponse({"error": "Supabase user not found"}, status=404)
+    local_user = User.objects.get(username=request.user.username)
+    tasks = Task.objects.filter(user=local_user)
 
     #fetch tasks
     if request.method == "GET":
         year = request.GET.get('year')
         month = request.GET.get('month')
-        tasks = Task.objects.filter(user=supabase_user)
+        # tasks = Task.objects.filter(user=supabase_user)
 
         if year and month:
             try:
@@ -57,7 +60,8 @@ def tasks_api(request):
         return JsonResponse({"error": "Date is required"}, status=400)
 
     task = Task.objects.create(
-        user=supabase_user,
+        # user=supabase_user,
+        user=local_user,
         task_name=title,
         description=description,
         date=date,
@@ -81,16 +85,14 @@ def tasks_api(request):
 @require_http_methods(["GET", "PATCH", "DELETE"])
 def task_detail_api(request, task_id: str):
     # Get Supabase user
-    try:
-        supabase_user = Users.objects.get(email=request.user.email)
-    except Users.DoesNotExist:
-        return JsonResponse({"error": "Supabase user not found"}, status=404)
-
-    # this get the task for user
-    try:
-        task = Task.objects.get(task_id=task_id, user=supabase_user)
-    except Task.DoesNotExist:
-        return JsonResponse({"error": "Not found"}, status=404)
+    # try:
+    #     supabase_user = Users.objects.get(email=request.user.email)
+    # except Users.DoesNotExist:
+    #     return JsonResponse({"error": "Supabase user not found"}, status=404)
+    local_user = User.objects.get(username=request.user.username)
+    task = Task.objects.filter(user=local_user, task_id=task_id).first()
+    if not task:
+        return JsonResponse({"error": "Task not found"}, status=404)
 
     # GET task details
     if request.method == "GET":
@@ -146,16 +148,18 @@ def task_detail_api(request, task_id: str):
 @login_required(login_url='login')
 @require_http_methods(["GET"])
 def weekly_summary_api(request):
-    try:
-        supabase_user = Users.objects.get(email=request.user.email)
-    except Users.DoesNotExist:
-        return JsonResponse({"error": "Supabase user not found"}, status=404)
+    # try:
+    #     supabase_user = Users.objects.get(email=request.user.email)
+    # except Users.DoesNotExist:
+    #     return JsonResponse({"error": "Supabase user not found"}, status=404)
+    local_user = User.objects.get(username=request.user.username)
 
     today = timezone.localdate()
     start = today - timedelta(days=today.weekday())  # Monday
     end = start + timedelta(days=6)  # Sunday
 
-    qs = Task.objects.filter(user=supabase_user, date__gte=start, date__lte=end)
+    # qs = Task.objects.filter(user=supabase_user, date__gte=start, date__lte=end)
+    qs = Task.objects.filter(user=local_user, date__gte=start, date__lte=end)
     total = qs.count()
     completed = qs.filter(status__iexact="Completed").count()
     pending = qs.exclude(status__iexact="Completed").count()
@@ -166,6 +170,31 @@ def weekly_summary_api(request):
         "total": total,
         "completed": completed,
         "pending": pending,
+    })
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+def weekly_completion_stats_api(request):
+    local_user = User.objects.get(username=request.user.username)
+    
+    today = timezone.localdate()
+    start = today - timedelta(days=today.weekday())  # Monday
+    end = start + timedelta(days=6)  # Sunday
+
+    tasks = Task.objects.filter(user=local_user, date__gte=start, date__lte=end)
+    total = tasks.count()
+    completed = tasks.filter(status__iexact="Completed").count()
+
+    completion_percentage = 0
+    if total > 0:
+        completion_percentage = round((completed / total) * 100, 2)  # round to 2 decimals
+
+    return JsonResponse({
+        "start": str(start),
+        "end": str(end),
+        "total_tasks": total,
+        "completed_tasks": completed,
+        "completion_percentage": completion_percentage
     })
 
 # @login_required(login_url='login')

@@ -27,7 +27,7 @@
             <button type="button" id="username-btn" class="login-toggle-btn">Username</button>
         </div>  
 
-        <form method="POST" id="login-form">
+        <form method="POST" id="login-form" action="{% url 'login' %}">
             {% csrf_token %}
             <div id="email-login">
                 <label for="email">Email Addess</label>
