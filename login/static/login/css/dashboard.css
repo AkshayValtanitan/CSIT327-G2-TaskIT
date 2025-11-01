@@ -275,3 +275,33 @@ body.dark-mode .time-col{
     border: 1px solid #818181;
     color: #ffffff;
 }
+
+.percentage-container {
+    margin-left: 75px;
+    width: 175px;
+    height: 150px;
+    position: relative;
+}
+
+.circle-container {
+    width: 150px;
+    height: 150px;
+    position: relative;
+    margin: 20px auto;
+}
+
+.circle {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(
+        green 0% 0%,
+        rgb(241, 199, 106) 0% 100%
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: black;
+}

@@ -1,8 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
-from login.models import SupabaseUser
+# from login.models import SupabaseUser
 import uuid
-from login.models import Users
+# from login.models import Users
+from django.contrib.auth.models import User
+from taskit_project import settings
 
 # class Task(models.Model):
 #     supabase_task_id = models.UUIDField(unique=True)
@@ -17,7 +19,8 @@ from login.models import Users
     
 class Category(models.Model):
     category_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(Users, on_delete=models.CASCADE, db_column='user_id')
+    # user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='user_id')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     category_name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
 
@@ -45,7 +48,7 @@ class Task(models.Model):
     ]
 
     task_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(Users, on_delete=models.CASCADE, db_column='user_id')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='user_id')
     task_name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, db_column='category_id')
