@@ -176,25 +176,30 @@ def weekly_summary_api(request):
 @require_http_methods(["GET"])
 def weekly_completion_stats_api(request):
     local_user = User.objects.get(username=request.user.username)
-    
+
     today = timezone.localdate()
     start = today - timedelta(days=today.weekday())  # Monday
     end = start + timedelta(days=6)  # Sunday
 
     tasks = Task.objects.filter(user=local_user, date__gte=start, date__lte=end)
+
     total = tasks.count()
     completed = tasks.filter(status__iexact="Completed").count()
+    overdue = tasks.filter(date__lt=today).exclude(status__iexact="Completed").count()
+    unfinished = total - completed - overdue
 
     completion_percentage = 0
     if total > 0:
-        completion_percentage = round((completed / total) * 100, 2)  # round to 2 decimals
+        completion_percentage = round((completed / total) * 100, 2)
 
     return JsonResponse({
         "start": str(start),
         "end": str(end),
         "total_tasks": total,
-        "completed_tasks": completed,
-        "completion_percentage": completion_percentage
+        "completed_count": completed,
+        "unfinished_count": unfinished,
+        "overdue_count": overdue,
+        "completion_percentage": completion_percentage,
     })
 
 # @login_required(login_url='login')
