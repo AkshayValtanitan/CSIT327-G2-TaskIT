@@ -63,6 +63,10 @@
                 <h3>Completed</h3>
                 <ul id="completedList"></ul>
             </div>
+            <section id="overdue">
+                <h3>Overdue</h3>
+                <ul id="overdueTasks"></ul>
+            </section>
         </div>
         
         <div class="calendar-box">
@@ -149,6 +153,7 @@
         const wsTotal = document.getElementById("ws-total");
         const wsCompleted = document.getElementById("ws-completed");
         const wsPending = document.getElementById("ws-pending");
+        const overdue = document.getElementById("overdueTasks");
         let editingTaskId = null;
 
         const now = new Date();
@@ -329,10 +334,15 @@
 
             const unfinished = document.getElementById('unfinishedList');
             const completed = document.getElementById('completedList');
-            unfinished.innerHTML = '';
-            completed.innerHTML = '';
+            // unfinished.innerHTML = '';
+            // completed.innerHTML = '';
+
+            unfinished.innerHTML = "";
+            completed.innerHTML = "";
+            overdue.innerHTML = "";
 
             tasks.forEach(t => {
+                const today = new Date();
                 const d = new Date(t.date);
                 if (d.getFullYear() !== year || d.getMonth() !== month) return;
                 const day = d.getDate();
@@ -367,19 +377,31 @@
                     case 'low': bgColor = '#81c784'; break;    // green
                     default: bgColor = '#cfd8dc';              // gray fallback
                 }
+                if (t.status === 'Overdue') {
+                    bgColor = '#ef9a9a'; // light red
+                }
 
                 li.style.backgroundColor = bgColor;
                 li.style.padding = '6px 10px';
                 li.style.borderRadius = '6px';
                 li.style.marginBottom = '4px';
                 li.style.color = '#222';
+                // li.textContent = t.title;
+
+                const dueDate = new Date(t.date);
+                const isCompleted = (t.status || 'pending').toLowerCase() === 'completed';
+                const isOverdue = dueDate < today && !isCompleted;
 
                 // append based on status
                 if ((t.status || 'pending').toLowerCase() === 'completed') {
                     completed.appendChild(li);
+                }else if (isOverdue) {
+                    li.style.backgroundColor = "#ef9a9a";
+                    overdue.appendChild(li);
                 } else {
                     unfinished.appendChild(li);
                 }
+                
             });
 
         }
@@ -543,12 +565,36 @@
         fetch('/api/tasks/weekly_completion_stats/')
             .then(res => res.json())
             .then(data => {
-                const percent = data.completion_percentage;
+                const completed = data.completed_count || 0;
+                const overdue = data.overdue_count || 0;
+                const unfinished = data.unfinished_count || 0;
+                const total = completed + overdue + unfinished;
+
+                const completedPercent = total ? (completed / total) * 100 : 0;
+                const overduePercent = total ? (overdue / total) * 100 : 0;
+
                 const circle = document.getElementById('completion-circle');
-                circle.textContent = percent + '%';
-                circle.style.background = `conic-gradient(green 0% ${percent}%, rgb(241, 199, 106) ${percent}% 100%)`;
+                circle.textContent = Math.round(completedPercent) + '%';
+
+                circle.style.background = `
+                    conic-gradient(
+                        green 0% ${completedPercent}%,
+                        rgb(199, 63, 63) ${completedPercent}% ${completedPercent + overduePercent}%,
+                        rgb(241, 199, 106) ${completedPercent + overduePercent}% 100%
+                    )`;
             })
             .catch(err => console.error(err));
+
+
+        // fetch('/api/tasks/weekly_completion_stats/')
+        //     .then(res => res.json())
+        //     .then(data => {
+        //         const percent = data.completion_percentage;
+        //         const circle = document.getElementById('completion-circle');
+        //         circle.textContent = percent + '%';
+        //         circle.style.background = `conic-gradient(green 0% ${percent}%, rgb(241, 199, 106) ${percent}% 100%)`;
+        //     })
+        //     .catch(err => console.error(err));
 
         // Initial render
         renderTasks();

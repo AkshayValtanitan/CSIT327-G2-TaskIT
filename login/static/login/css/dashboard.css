@@ -296,6 +296,7 @@ body.dark-mode .time-col{
     border-radius: 50%;
     background: conic-gradient(
         green 0% 0%,
+        rgb(199, 63, 63) 0% 100%
         rgb(241, 199, 106) 0% 100%
     );
     display: flex;
