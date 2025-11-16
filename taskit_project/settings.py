@@ -17,6 +17,7 @@ import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 if os.environ.get("RENDER", "") != "true":
     load_dotenv()
@@ -26,6 +27,13 @@ if os.environ.get("RENDER", "") != "true":
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECURITY WARNING: don't run with debug turned on in production!
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+SUPABASE_USERS_TABLE = os.getenv("SUPABASE_USERS_TABLE", "users")
+SUPABASE_TASKS_TABLE = os.getenv("SUPABASE_TASKS_TABLE", "task")
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
 
@@ -34,10 +42,10 @@ SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
-# ALLOWED_HOSTS = ['csit327-g2-taskit.onrender.com','localhost','127.0.0.1']
-ALLOWED_HOSTS = [
-    h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()
-]
+ALLOWED_HOSTS = ['csit327-g2-taskit.onrender.com','localhost','127.0.0.1']
+# ALLOWED_HOSTS = [
+#     h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()
+# ]
 CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
 ]
@@ -123,20 +131,20 @@ WSGI_APPLICATION = 'taskit_project.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Default to SQLite for local development
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
-DATABASE_URL = os.environ.get("DATABASE_URL")
 DATABASES = {
-    "default": dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-        ssl_require=True
-    )
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
+# DATABASE_URL = os.environ.get("DATABASE_URL")
+# DATABASES = {
+#     "default": dj_database_url.config(
+#         default=DATABASE_URL,
+#         conn_max_age=600,
+#         ssl_require=True
+#     )
+# }
 # postgresql://postgres.bwaczilydwpkqlrxdjoq:N0V11Fr1092Oo9@aws-1-us-east-2.pooler.supabase.com:5432/postgres
 
 
