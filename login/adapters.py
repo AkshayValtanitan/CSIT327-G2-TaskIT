@@ -1,11 +1,10 @@
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
-from allauth.account.models import EmailAddress
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from .models import Profile
 from django.utils import timezone
+from taskit_project.supabase_client import supabase_service  # <-- add this
 
-User = get_user_model()
-
+SUPABASE_USERS_TABLE = getattr(settings, "SUPABASE_USERS_TABLE", "users")
 
 class MySocialAccountAdapter(DefaultSocialAccountAdapter):
     def pre_social_login(self, request, sociallogin):
@@ -18,10 +17,21 @@ class MySocialAccountAdapter(DefaultSocialAccountAdapter):
             if user:
                 sociallogin.connect(request, user)
 
+                # Update or create profile
                 if hasattr(sociallogin, "account") and sociallogin.account:
                     profile, _ = Profile.objects.get_or_create(user=user)
                     profile.google_id = sociallogin.account.uid
                     profile.last_login = timezone.now()
                     profile.save()
+
+                # Fetch Supabase user_id for this email
+                resp = supabase_service.table(SUPABASE_USERS_TABLE).select("user_id").eq("email", email_address).execute()
+                data = getattr(resp, "data", [])
+                if data:
+                    supabase_user_id = data[0]["user_id"]
+                    request.session["supabase_user_id"] = supabase_user_id
+                    request.session["user_id"] = supabase_user_id
+                    request.session["email"] = email_address
+
         except Exception:
             pass

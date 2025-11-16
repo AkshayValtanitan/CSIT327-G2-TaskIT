@@ -1,65 +1,23 @@
-from django.contrib.auth import login, get_user_model
+import hashlib
+import uuid
+import requests
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.contrib import messages
-# from taskit_project.supabase_client import supabase
-import hashlib  
-import uuid
-from .forms import RegisterForm
-# from login.models import Users
+from django.contrib.auth import login as auth_login, get_user_model
+from django.utils import timezone
 from allauth.socialaccount.models import SocialApp
 from django.contrib.sites.models import Site
-from django.contrib.auth.hashers import make_password
-from django.contrib.auth.models import User
+
+from .forms import RegisterForm
+from taskit_project.supabase_client import supabase_service
 from login.models import Profile
 
-# SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
-# SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
-# SUPABASE_TABLE = "users"
+User = get_user_model()
+SUPABASE_TABLE = "users"
+SUPABASE_URL = settings.SUPABASE_URL
+SUPABASE_SERVICE_KEY = settings.SUPABASE_SERVICE_KEY
 
-# User = get_user_model()
-
-# def register_view(request):
-# 	if request.method == "POST":
-# 		form = RegisterForm(request.POST)
-# 		if form.is_valid():
-# 			data = form.cleaned_data
-# 			first_name = data["first_name"]
-# 			last_name = data["last_name"]
-# 			username = data["username"]
-# 			email = data["email"]
-# 			password = data["password"]
-# 			confirm_password = data["confirm_password"]
-# 			google_id = request.POST.get("google_id") or None
-
-# 			if password != confirm_password:
-# 				messages.error(request, "Passwords do not match.")
-# 				return render(request, "register.html", {"form": form, "google_enabled": _is_google_enabled(request)})
-
-# 			hashed_password = hashlib.sha256(password.encode()).hexdigest()
-# 			user_id = str(uuid.uuid4())
-
-# 			try:
-# 				user = User.objects.create(
-# 					user_id=user_id,
-# 					first_name=first_name,
-# 					last_name=last_name,
-# 					username=username,
-# 					email=email,
-# 					password=hashed_password,
-# 					google_id=google_id,
-# 				)
-# 				messages.success(request, "Account created successfully! Please log in.")
-# 				return redirect("login")
-
-# 			except Exception as e:
-# 				print("Error creating user:", e)
-# 				messages.error(request, "Error creating account. Try again.")
-# 		else:
-# 			messages.error(request, "Please fill in all required fields.")
-# 	else:
-# 		form = RegisterForm()
-
-# 	return render(request, "register.html", {"form": form, "google_enabled": _is_google_enabled(request)})
 
 def register_view(request):
     if request.method == "POST":
@@ -76,28 +34,59 @@ def register_view(request):
             if password != confirm_password:
                 messages.error(request, "Passwords do not match.")
             else:
+                # hash password for storage
+                hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                user_id = str(uuid.uuid4())
+
+                # Prepare Supabase payload
+                payload = {
+                    "user_id": user_id,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "username": username,
+                    "email": email,
+                    "password": hashed_password,
+                    "last_login": timezone.now().isoformat(),
+                }
+
+                url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}"
+                headers = {
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=representation",  # returns inserted row
+                }
+
                 try:
-                    user = User(
-                        first_name=first_name,
-                        last_name=last_name,
-                        username=username,
-                        email=email,
-                        password=make_password(password)
-                    )
-                    user.save()
+                    r = requests.post(url, json=payload, headers=headers, timeout=10)
+                    r.raise_for_status()
+                    res_json = r.json()
+                    if isinstance(res_json, list) and res_json:
+                        supabase_user_id = res_json[0].get("user_id")
 
-                    Profile.objects.create(user=user, last_login=None)
+                        # Create local Django user for session management
+                        user, _ = User.objects.get_or_create(
+                            username=username,
+                            defaults={"email": email, "first_name": first_name, "last_name": last_name},
+                        )
+                        user.set_unusable_password()  # we rely on Supabase
+                        user.save()
 
-                    messages.success(request, "Account created successfully! Please log in.")
-                    return redirect("login")
+                        Profile.objects.create(user=user, last_login=None)
+
+                        messages.success(request, "Account created successfully! Please log in.")
+                        return redirect("login")
+                    else:
+                        messages.error(request, "Error creating account. Try again.")
                 except Exception as e:
-                    print("Error creating user:", e)
+                    print("Supabase registration error:", e)
                     messages.error(request, "Error creating account. Try again.")
         else:
             messages.error(request, "Please fill in all required fields.")
     else:
         form = RegisterForm()
 
+    # Check if Google login is enabled
     try:
         current_site = Site.objects.get_current(request)
         google_enabled = SocialApp.objects.filter(provider="google", sites=current_site).exists()

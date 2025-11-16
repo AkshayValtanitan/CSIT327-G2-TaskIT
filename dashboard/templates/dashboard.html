@@ -288,7 +288,7 @@
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to create task');
-            return data.task;
+            return data.tasks;
         }
         async function apiPatchTask(id, patch) {
             const res = await fetch(`/api/tasks/${id}/`, {
@@ -317,9 +317,11 @@
             const month = now.getMonth();
             let tasks = [];
             try {
-                tasks = await apiGetTasks(year, month);
+                tasks = await apiGetTasks(year, month + 1);
             } catch (e) {
                 console.error(e);
+                const lists = document.getElementById('lists');
+                lists.innerHTML = '<p style="color:red;">Failed to fetch tasks. Please refresh.</p>';
             }
 
             // sort: high > medium > low, then date/hour
@@ -572,6 +574,7 @@
 
                 const completedPercent = total ? (completed / total) * 100 : 0;
                 const overduePercent = total ? (overdue / total) * 100 : 0;
+                const unfinishedPercent = total ? (unfinished / total) * 100 : 0;
 
                 const circle = document.getElementById('completion-circle');
                 circle.textContent = Math.round(completedPercent) + '%';
@@ -581,7 +584,8 @@
                         green 0% ${completedPercent}%,
                         rgb(199, 63, 63) ${completedPercent}% ${completedPercent + overduePercent}%,
                         rgb(241, 199, 106) ${completedPercent + overduePercent}% 100%
-                    )`;
+                    )
+                `;
             })
             .catch(err => console.error(err));
 
