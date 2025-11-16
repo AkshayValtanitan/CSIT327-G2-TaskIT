@@ -1,169 +1,129 @@
-from django.contrib.auth import get_user_model
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_http_methods
-import json
 from django.contrib.auth.decorators import login_required
+import json
 import uuid
 from django.utils import timezone
-from tasks.models import Task
-# from login.models import Users
-from django.contrib.auth.models import User
 from datetime import timedelta
-
-User = get_user_model()
+from taskit_project.supabase_client import supabase
+from calendar import monthrange
+from datetime import datetime, date, timedelta, time
 
 @login_required(login_url='login')
 @require_http_methods(["GET", "POST"])
 def tasks_api(request):
-    # Get Supabase user
-    # try:
-    #     supabase_user = Users.objects.get(email=request.user.email)
-    # except Users.DoesNotExist:
-    #     return JsonResponse({"error": "Supabase user not found"}, status=404)
-    local_user = User.objects.get(username=request.user.username)
-    tasks = Task.objects.filter(user=local_user)
+    user_id = request.session.get("supabase_user_id")
+    print("User ID in session:", user_id)
+    if not user_id:
+        return JsonResponse({"error": "Supabase user_id not found"}, status=400)
 
-    #fetch tasks
     if request.method == "GET":
-        year = request.GET.get('year')
-        month = request.GET.get('month')
-        # tasks = Task.objects.filter(user=supabase_user)
+        year = request.GET.get("year")
+        month = request.GET.get("month")
 
-        if year and month:
-            try:
-                y = int(year)
-                m = int(month) + 1
-                tasks = tasks.filter(date__year=y, date__month=m)
-            except ValueError:
-                pass
+        try:
+            y = int(year)
+            m = int(month)
+        except (TypeError, ValueError):
+            return JsonResponse({"error": "Invalid year or month"}, status=400)
 
-        data = list(tasks.values())
-        return JsonResponse({"tasks": data})
+        # now safe to get last day
+        last_day = monthrange(y, m)[1]
+        start_date = f"{y}-{m:02d}-01"
+        end_date = f"{y}-{m:02d}-{last_day:02d}"
 
-    # create new task/
+        query = supabase.table("task").select("*").eq("user_id", user_id)
+        query = query.gte("date", start_date).lte("date", end_date)
+
+        data = query.execute()
+        return JsonResponse({"tasks": data.data if data.data else []})  # changed key to "tasks" to match frontend
+
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except Exception:
         return HttpResponseBadRequest("Invalid JSON")
 
-    title = payload.get("title")
-    date = payload.get("date")
-    hour = payload.get("hour")
-    color = payload.get("color") or "Green"
-    description = payload.get("description") or ""
-    priority = payload.get("priority") or "Medium"
-    status_val = payload.get("status") or "Pending"
+    required_fields = ["title", "date"]
+    for field in required_fields:
+        if not payload.get(field):
+            return JsonResponse({"error": f"{field} is required"}, status=400)
 
-    if not title:
-        return JsonResponse({"error": "Title is required"}, status=400)
-    if not date:
-        return JsonResponse({"error": "Date is required"}, status=400)
+    task_data = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "title": payload.get("title"),
+        "description": payload.get("description") or "",
+        "date": payload.get("date"),
+        "hour": payload.get("hour") or "",
+        "color": payload.get("color") or "Green",
+        "priority": payload.get("priority") or "Medium",
+        "status": payload.get("status") or "Pending",
+        "date_created": timezone.now().isoformat(),
+        "date_updated": timezone.now().isoformat(),
+    }
 
-    task = Task.objects.create(
-        # user=supabase_user,
-        user=local_user,
-        task_name=title,
-        description=description,
-        date=date,
-        hour=hour,
-        color=color,
-        priority=priority,
-        status=status_val,
-    )
+    response = supabase.table("task").insert(task_data).execute()
+    # return JsonResponse({"tasks": response.data[0] if response.data else task_data})
+    return JsonResponse({"tasks": [response.data[0]] if response.data else [task_data]})
 
-    return JsonResponse({"task": {
-        "id": str(task.task_id),
-        "task_name": task.task_name,
-        "priority": task.priority,
-        "status": task.status,
-        "date": str(task.date),
-        "hour": task.hour,
-        "color": task.color,
-    }})
 
 @login_required(login_url='login')
 @require_http_methods(["GET", "PATCH", "DELETE"])
-def task_detail_api(request, task_id: str):
-    # Get Supabase user
-    # try:
-    #     supabase_user = Users.objects.get(email=request.user.email)
-    # except Users.DoesNotExist:
-    #     return JsonResponse({"error": "Supabase user not found"}, status=404)
-    local_user = User.objects.get(username=request.user.username)
-    task = Task.objects.filter(user=local_user, task_id=task_id).first()
-    if not task:
+def task_detail_api(request, task_id):
+    user_id = request.session.get("supabase_user_id")
+    if not user_id:
+        return JsonResponse({"error": "Supabase user_id not found"}, status=400)
+
+    task_res = supabase.table("task").select("*").eq("id", task_id).eq("user_id", user_id).execute()
+    if not task_res.data:
         return JsonResponse({"error": "Task not found"}, status=404)
+    task = task_res.data[0]
 
-    # GET task details
     if request.method == "GET":
-        return JsonResponse({
-            "task": {
-                "id": str(task.task_id),
-                "task_name": task.task_name,
-                "priority": task.priority,
-                "status": task.status,
-                "date": str(task.date),
-                "hour": task.hour,
-                "color": task.color,
-                "description": task.description,
-            }
-        })
+        return JsonResponse({"tasks": task})
 
-    # update task
     elif request.method == "PATCH":
         try:
             payload = json.loads(request.body.decode("utf-8"))
         except Exception:
             return HttpResponseBadRequest("Invalid JSON")
 
-        updated = False
-        for field in ["task_name", "description", "date", "hour", "color", "priority", "status"]:
-            if field in payload and payload[field] is not None:
-                setattr(task, field, payload[field])
-                updated = True
-
-        if not updated:
+        update_data = {k: v for k, v in payload.items() if k in ["title", "description", "date", "hour", "color", "priority", "status"]}
+        if not update_data:
             return JsonResponse({"error": "No fields to update"}, status=400)
 
-        task.save()
-        return JsonResponse({
-            "task": {
-                "id": str(task.task_id),
-                "task_name": task.task_name,
-                "priority": task.priority,
-                "status": task.status,
-                "date": str(task.date),
-                "hour": task.hour,
-                "color": task.color,
-                "description": task.description,
-            }
-        })
+        update_data["date_updated"] = timezone.now().isoformat()
+        updated = supabase.table("task").update(update_data).eq("id", task_id).eq("user_id", user_id).execute()
+        return JsonResponse({"tasks": updated.data[0] if updated.data else task})
 
-    # DELETE task
     elif request.method == "DELETE":
-        task.delete()
+        supabase.table("task").delete().eq("id", task_id).eq("user_id", user_id).execute()
         return JsonResponse({"ok": True})
 
 
 @login_required(login_url='login')
 @require_http_methods(["GET"])
 def weekly_summary_api(request):
-    # try:
-    #     supabase_user = Users.objects.get(email=request.user.email)
-    # except Users.DoesNotExist:
-    #     return JsonResponse({"error": "Supabase user not found"}, status=404)
-    local_user = User.objects.get(username=request.user.username)
-
+    user_id = request.session.get("supabase_user_id")
+    if not user_id:
+        return JsonResponse({"error": "Supabase user_id not found"}, status=400)
     today = timezone.localdate()
-    start = today - timedelta(days=today.weekday())  # Monday
-    end = start + timedelta(days=6)  # Sunday
+    start = today - timedelta(days=today.weekday())
+    end = start + timedelta(days=6)
+    start_dt = datetime.combine(start, time.min)
+    end_dt = datetime.combine(end, time.max)
 
+    # tasks_res = supabase.table("task").select("*").eq("user_id", user_id).gte("date", str(start_dt)).lte("date", str(end_dt)).execute()
+    tasks_res = supabase.table("task").select("*")\
+        .eq("user_id", user_id)\
+        .gte("date", start_dt.isoformat())\
+        .lte("date", end_dt.isoformat())\
+        .execute()
+    tasks = tasks_res.data or []
 
-    # qs = Task.objects.filter(user=supabase_user, date__gte=start, date__lte=end)
-    qs = Task.objects.filter(user=local_user, date__gte=start, date__lte=end)
-    total = qs.count()
-    completed = qs.filter(status__iexact="Completed").count()
-    pending = qs.exclude(status__iexact="Completed").count()
+    total = len(tasks)
+    completed = sum(1 for t in tasks if t.get("status", "").lower() == "completed")
+    pending = total - completed
 
     WARNING_THRESHOLD = 5 
     overload_warning = total > WARNING_THRESHOLD
@@ -177,25 +137,62 @@ def weekly_summary_api(request):
         "overload_warning": overload_warning,
     })
 
+
 @login_required(login_url='login')
 @require_http_methods(["GET"])
 def weekly_completion_stats_api(request):
-    local_user = User.objects.get(username=request.user.username)
+    user_id = request.session.get("supabase_user_id")
+    if not user_id:
+        return JsonResponse({"error": "Supabase user_id not found"}, status=400)
 
-    today = timezone.localdate()
-    start = today - timedelta(days=today.weekday())  # Monday
-    end = start + timedelta(days=6)  # Sunday
+    today = date.today()
+    start = today - timedelta(days=today.weekday())
+    end = start + timedelta(days=6)
 
-    tasks = Task.objects.filter(user=local_user, date__gte=start, date__lte=end)
+    # Convert dates to ISO format (YYYY-MM-DD) for Supabase
+    start_iso = start.isoformat()
+    end_iso = end.isoformat()
 
-    total = tasks.count()
-    completed = tasks.filter(status__iexact="Completed").count()
-    overdue = tasks.filter(date__lt=today).exclude(status__iexact="Completed").count()
-    unfinished = total - completed - overdue
+    # Fetch tasks only for this user and this week
+    # tasks_res = supabase.table("task").select("*")\
+    #     .eq("user_id", user_id)\
+    #     .gte("date", start_iso)\
+    #     .lte("date", end_iso)\
+    #     .execute()
+    
+    tasks_res = supabase.table("task").select("*")\
+        .eq("user_id", user_id)\
+        .execute()
 
-    completion_percentage = 0
-    if total > 0:
-        completion_percentage = round((completed / total) * 100, 2)
+    tasks = tasks_res.data or []
+
+    print("DEBUG: total tasks fetched for user:", len(tasks))
+    for t in tasks:
+        print("DEBUG TASK:", t.get("date"), t.get("status"))
+    
+    tasks = tasks_res.data or []
+
+    total = len(tasks)
+    completed = overdue = unfinished = 0
+
+    for t in tasks:
+        status = (t.get("status") or "").strip().lower()
+        date_str = t.get("date")
+        if not date_str:
+            continue
+
+        # Extract date part only
+        task_date = date_str[:10]  # 'YYYY-MM-DD'
+        task_date = datetime.strptime(task_date, "%Y-%m-%d").date()
+
+        if status == "completed":
+            completed += 1
+        elif task_date < today:
+            overdue += 1
+        else:
+            unfinished += 1
+
+    completion_percentage = round((completed / total) * 100, 2) if total else 0
 
     return JsonResponse({
         "start": str(start),
@@ -206,145 +203,3 @@ def weekly_completion_stats_api(request):
         "overdue_count": overdue,
         "completion_percentage": completion_percentage,
     })
-
-# @login_required(login_url='login')
-# @require_http_methods(["GET", "POST"])
-# def tasks_api(request):
-#     user = request.user
-
-#     if request.method == "GET":
-#         year = request.GET.get('year')
-#         month = request.GET.get('month')
-#         tasks = Task.objects.filter(user=user)
-
-#         if year and month:
-#             try:
-#                 y = int(year)
-#                 m = int(month) + 1
-#                 tasks = tasks.filter(date__year=y, date__month=m)
-#             except ValueError:
-#                 pass
-
-#         data = list(tasks.values())
-#         return JsonResponse({"tasks": data})
-
-#     # POST
-#     try:
-#         payload = json.loads(request.body.decode("utf-8"))
-#     except Exception:
-#         return HttpResponseBadRequest("Invalid JSON")
-
-#     title = payload.get("title")
-#     date = payload.get("date")
-#     hour = payload.get("hour")
-#     color = payload.get("color") or "Green"
-#     description = payload.get("description") or ""
-#     priority = payload.get("priority") or "Medium"
-#     status_val = payload.get("status") or "Pending"
-
-#     if not title:
-#         return JsonResponse({"error": "Title is required"}, status=400)
-#     if not date:
-#         return JsonResponse({"error": "Date is required"}, status=400)
-
-#     task = Task.objects.create(
-#         user=user,
-#         task_name=title,
-#         description=description,
-#         date=date,
-#         hour=hour,
-#         color=color,
-#         priority=priority,
-#         status=status_val,
-#     )
-
-#     return JsonResponse({"task": {
-#         "id": str(task.task_id),
-#         "task_name": task.task_name,
-#         "priority": task.priority,
-#         "status": task.status,
-#         "date": str(task.date),
-#         "hour": task.hour,
-#         "color": task.color,
-#     }})
-
-# @login_required(login_url='login')
-# @require_http_methods(["GET", "PATCH", "DELETE"])
-# def task_detail_api(request, task_id: str):
-#     supabase_user = Users.objects.get(user_id=request.user.supabase_user_id)
-
-#     try:
-#         task = Task.objects.get(task_id=task_id, user=user)
-#     except Task.DoesNotExist:
-#         return JsonResponse({"error": "Not found"}, status=404)
-
-#     if request.method == "GET":
-#         return JsonResponse({
-#             "task": {
-#                 "id": str(task.task_id),
-#                 "task_name": task.task_name,
-#                 "priority": task.priority,
-#                 "status": task.status,
-#                 "date": str(task.date),
-#                 "hour": task.hour,
-#                 "color": task.color,
-#                 "description": task.description,
-#             }
-#         })
-
-#     elif request.method == "PATCH":
-#         try:
-#             payload = json.loads(request.body.decode("utf-8"))
-#         except Exception:
-#             return HttpResponseBadRequest("Invalid JSON")
-
-#         updated = False
-#         for field in ["task_name", "description", "date", "hour", "color", "priority", "status"]:
-#             if field in payload and payload[field] is not None:
-#                 setattr(task, field, payload[field])
-#                 updated = True
-
-#         if not updated:
-#             return JsonResponse({"error": "No fields to update"}, status=400)
-
-#         task.save()
-#         return JsonResponse({
-#             "task": {
-#                 "id": str(task.task_id),
-#                 "task_name": task.task_name,
-#                 "priority": task.priority,
-#                 "status": task.status,
-#                 "date": str(task.date),
-#                 "hour": task.hour,
-#                 "color": task.color,
-#                 "description": task.description,
-#             }
-#         })
-
-#     elif request.method == "DELETE":
-#         task.delete()
-#         return JsonResponse({"ok": True})
-
-
-# @login_required(login_url='login')
-# @require_http_methods(["GET"])
-# def weekly_summary_api(request):
-#     user = request.user
-#     today = timezone.localdate()
-#     start = today - timedelta(days=today.weekday())  # Monday
-#     end = start + timedelta(days=6)  # Sunday
-
-#     qs = Task.objects.filter(user=user, date__gte=start, date__lte=end)
-#     total = qs.count()
-#     completed = qs.filter(status__iexact="Completed").count()
-#     pending = qs.exclude(status__iexact="Completed").count()
-
-#     return JsonResponse({
-#         "start": str(start),
-#         "end": str(end),
-#         "total": total,
-#         "completed": completed,
-#         "pending": pending,
-#     })
-
-

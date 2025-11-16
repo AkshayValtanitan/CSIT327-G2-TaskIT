@@ -1,211 +1,192 @@
-# import requests
-from django.http import HttpResponse
-from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
-from django.contrib.auth import authenticate, login as auth_login, get_user_model
+import os
+import hashlib
+import requests
+from django.conf import settings
 from django.shortcuts import render, redirect
-from allauth.socialaccount.signals import social_account_added
+from django.contrib import messages
+from django.contrib.auth import login as auth_login, get_user_model
+from django.utils import timezone
 from allauth.account.signals import user_logged_in
 from django.dispatch import receiver
-from django.utils import timezone
-from django.contrib import messages
-# from taskit_project.supabase_client import supabase
-import hashlib
-from .models import LoginAttempt
-# from .models import Users
-from django.contrib.auth.models import User
 from allauth.socialaccount.models import SocialApp
-from django.contrib.auth.hashers import check_password
 from django.contrib.sites.models import Site
-from .models import Profile
-# from login.models import SupabaseUser
 
-# SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
-# SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
-# SUPABASE_TABLE = "users"
+from taskit_project.supabase_client import supabase_anon, supabase_service
+from .models import LoginAttempt
 
 User = get_user_model()
+SUPABASE_TABLE = getattr(settings, "SUPABASE_USERS_TABLE", "users")
+SUPABASE_URL = settings.SUPABASE_URL
+SUPABASE_SERVICE_KEY = settings.SUPABASE_SERVICE_KEY
+SUPABASE_ANON_KEY = settings.SUPABASE_ANON_KEY
+
 
 def login_view(request):
     password_error = None
     email_error = None
     username_error = None
-    general_error = None
 
     if request.method == "POST":
+        password = request.POST.get("password", "").strip()
         email = request.POST.get("email", "").strip()
         username = request.POST.get("username", "").strip()
-        password = request.POST.get("password", "").strip()
 
         if not password:
             password_error = "Password is required"
 
-        if email and username:
-            general_error = "Please use either email or username, not both."
-        elif not email and not username:
-            general_error = "Please enter either email or username."
+        if email:
+            # get Supabase for email
+            resp = supabase_anon.table(SUPABASE_TABLE).select("*").eq("email", email).execute()
+            user_data = getattr(resp, "data", []) or []
+            if not user_data:
+                email_error = "Email not found"
+            else:
+                row = user_data[0]
+                hashed = hashlib.sha256(password.encode()).hexdigest()
+                if row.get("password") == hashed:
+                    user, _ = User.objects.get_or_create(
+                        username=row.get("username") or f"user_{row.get('user_id')}",
+                        defaults={"email": row.get("email", "")},
+                    )
+                    user.set_unusable_password()
+                    user.save()
+                    auth_login(request, user)
 
-        user_obj = None
-        if not general_error:
-            if email:
-                try:
-                    user_obj = User.objects.get(email=email)
-                except User.DoesNotExist:
-                    email_error = "Email not found"
-            elif username:
-                try:
-                    user_obj = User.objects.get(username=username)
-                except User.DoesNotExist:
-                    username_error = "Username not found"
+                    LoginAttempt.objects.create(user=user, success=True)
 
-            if user_obj and check_password(password, user_obj.password):
-                # Successful login
-                auth_login(request, user_obj)
+                    request.session["supabase_user_id"] = row.get("user_id")
+                    request.session["email"] = row.get("email")
+                    request.session["username"] = row.get("username")
 
-                # Ensure Profile exists
-                profile, created = Profile.objects.get_or_create(user=user_obj)
-                profile.last_login = timezone.now()
-                profile.save()
+                    messages.success(request, "Logged in successfully!")
+                    return redirect("/dashboard/")
+                else:
+                    LoginAttempt.objects.create(email_or_username=email, success=False)
+                    password_error = "Invalid password"
 
-                # Save session
-                request.session["user_id"] = user_obj.id
-                request.session["email"] = user_obj.email
-                request.session["username"] = user_obj.username
+        elif username:
+            print("Trying username:", username)  # debug
+            # resp = supabase_anon.table(SUPABASE_TABLE).select("*").eq("username", username).execute()
+            resp = supabase_service.table(SUPABASE_TABLE).select("*").eq("username", username).execute()
+            print("Supabase response:", getattr(resp, "data", None))  # debug
+            user_data = getattr(resp, "data", []) or []
+            if not user_data:
+                username_error = "Username not found"
+            else:
+                row = user_data[0]
+                hashed = hashlib.sha256(password.encode()).hexdigest()
+                if row.get("password") == hashed:
+                    user, _ = User.objects.get_or_create(
+                        username=row.get("username") or f"user_{row.get('user_id')}",
+                        defaults={"email": row.get("email", "")},
+                    )
+                    user.set_unusable_password()
+                    user.save()
+                    auth_login(request, user)
 
-                messages.success(request, "Logged in successfully!")
-                return redirect("/dashboard/")
-            elif user_obj:
-                password_error = "Invalid password"
+                    LoginAttempt.objects.create(user=user, success=True)
 
-    # Google login
-    try:
-        current_site = Site.objects.get_current(request)
-        google_enabled = SocialApp.objects.filter(provider="google", sites=current_site).exists()
-    except Exception:
-        google_enabled = False
+                    request.session["supabase_user_id"] = row.get("user_id")
+                    request.session["username"] = row.get("username")
+
+                    messages.success(request, "Logged in successfully!")
+                    return redirect("/dashboard/")
+                else:
+                    LoginAttempt.objects.create(email_or_username=username, success=False)
+                    password_error = "Invalid password"
+        else:
+            messages.error(request, "Please enter either email or username")
+
+    current_site = Site.objects.get_current()
+    google_enabled = SocialApp.objects.filter(provider='google', sites=current_site).exists()
 
     return render(request, "login.html", {
         "password_error": password_error,
         "email_error": email_error,
         "username_error": username_error,
-        "general_error": general_error,
-        "google_enabled": google_enabled,
+        "google_enabled": google_enabled
     })
 
 def logout_view(request):
-	request.session.flush() 
-	messages.success(request, "Logged out successfully.")
-	return redirect('login')
+    request.session.flush()
+    messages.success(request, "Logged out successfully.")
+    return redirect("login")
 
-# This runs automatically when a user logs in via ANY method, including Google
+
 @receiver(user_logged_in)
-def handle_google_login(sender, request, user, **kwargs):
+def update_last_login_supabase(sender, request, user, **kwargs):
+    supabase_user_id = request.session.get("supabase_user_id")
+    if not supabase_user_id:
+        return
+
+    url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}?user_id=eq.{supabase_user_id}"
+    payload = {"last_login": timezone.now().isoformat()}
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+    try:
+        r = requests.patch(url, json=payload, headers=headers, timeout=10)
+        if r.status_code not in (200, 204):
+            print("Supabase last_login update error:", r.status_code, r.text)
+    except Exception as e:
+        print("Supabase last_login patch exception:", str(e))
+
+@receiver(user_logged_in)
+def sync_google_user_supabase(sender, request, user, **kwargs):
     social_accounts = user.socialaccount_set.filter(provider="google")
-    if social_accounts.exists():
-        sociallogin = social_accounts.first()
-        google_id = sociallogin.uid
+    if not social_accounts.exists():
+        return
 
-        profile, created = Profile.objects.get_or_create(user=user)
-        profile.google_id = google_id
-        profile.last_login = timezone.now()
-        profile.save()
+    sociallogin = social_accounts.first()
+    extra_data = sociallogin.extra_data or {}
+    email = extra_data.get("email") or user.email
 
-        request.session["user_id"] = user.id
-        request.session["email"] = user.email
-        request.session["username"] = user.username
-        
-@receiver(social_account_added)
-def link_existing_user(sender, request, sociallogin, **kwargs):
-    user = sociallogin.user
-    if hasattr(sociallogin, "account") and sociallogin.account:
-        profile, created = Profile.objects.update_or_create(
-            user=user,
-            defaults={
-                "google_id": sociallogin.account.uid,
-                "last_login": timezone.now()
-            }
-        )
+    data = {
+        "first_name": extra_data.get("given_name", ""),
+        "last_name": extra_data.get("family_name", ""),
+        "username": extra_data.get("name", f"user{user.id}"),
+        "email": email,
+        "password": "",
+        "google_id": sociallogin.uid,
+        "last_login": timezone.now().isoformat()
+    }
 
-class MySocialAccountAdapter(DefaultSocialAccountAdapter):
-    def pre_social_login(self, request, sociallogin):
-        # sociallogin.user contains the Google account email
-        email_address = sociallogin.user.email
-        if not email_address:
-            return
+    url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}?on_conflict=email"
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
 
-        try:
-            # Check if a user with this email exists
-            user = self.get_user(email=email_address)
-            if user:
-                # Connect this sociallogin to the existing user
-                sociallogin.connect(request, user)
-                # Update Profile
-                profile, _ = Profile.objects.get_or_create(user=user)
-                profile.google_id = sociallogin.uid
-                profile.last_login = timezone.now()
-                profile.save()
-        except Exception:
-            pass
+    supabase_user_id = None
+    try:
+        # Try upsert
+        r = requests.post(url, json=data, headers=headers, timeout=10)
+        r.raise_for_status()
+        res_json = r.json()
+        if isinstance(res_json, list) and res_json:
+            supabase_user_id = res_json[0].get("user_id")
 
-# @receiver(user_logged_in)
-# def update_last_login_supabase(request, user, **kwargs):
+        # If no user_id returned, fetch existing user by email
+        if not supabase_user_id:
+            get_url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}?email=eq.{email}"
+            gr = requests.get(get_url, headers=headers, timeout=10)
+            if gr.status_code == 200:
+                existing = gr.json()
+                if existing:
+                    supabase_user_id = existing[0].get("user_id")
 
-# 	try:
-# 		supa_user = Profile.objects.get(user=user)
-# 		supa_user.last_login = timezone.now()
-# 		supa_user.save(update_fields=['last_login'])
-# 	except Profile.DoesNotExist:
-# 		print(f"[WARN] SupabaseUser entry missing for {user.username}")
-          
+        # Finally, store in session for your APIs
+        request.session["supabase_user_id"] = supabase_user_id
+        request.session["user_id"] = supabase_user_id
+        request.session["email"] = email
+        request.session["username"] = data.get("username")
 
-# @receiver(user_logged_in)
-# def sync_google_user_supabase(request, user, **kwargs):
+        print("Supabase user ID after Google login:", supabase_user_id)
 
-# 	social_accounts = user.socialaccount_set.filter(provider="google")
-# 	if not social_accounts.exists():
-# 		return
-
-# 	sociallogin = social_accounts.first()
-# 	extra_data = sociallogin.extra_data
-# 	email = extra_data.get("email") or user.email
-
-# 	supa_user, created = Profile.objects.update_or_create(
-# 		email=email,
-# 		defaults={
-# 			"user": user,
-# 			"first_name": extra_data.get("given_name", ""),
-# 			"last_name": extra_data.get("family_name", ""),
-# 			"username": extra_data.get("name", f"user{user.id}"),
-# 			"google_id": sociallogin.uid,
-# 			"last_login": timezone.now(),
-# 		}
-# 	)
-
-# 	request.session['user_id'] = str(supa_user.supabase_user_id)
-# 	request.session['email'] = email
-# 	print("DEBUG: Stored user_id in session:", request.session.get("user_id"))
-
-    
-
-# @receiver(user_logged_in)
-# def update_last_login_supabase(request, user, **kwargs):
-#
-#     SUPABASE_URL = "https://bwaczilydwpkqlrxdjoq.supabase.co"
-#     SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YWN6aWx5ZHdwa3Fscnhkam9xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE0MTI0OSwiZXhwIjoyMDc0NzE3MjQ5fQ.RZ5WzeDouz5yNLFyg0W9e9ef8Lol2XnusQguDI4Z-6w"
-#     SUPABASE_TABLE = "users"
-#
-#     data = {"last_login": timezone.now().isoformat()}
-#
-#     response = requests.patch(
-#         f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}?email=eq.{user.email}",
-#         json=data,
-#         headers={
-#             "apikey": SUPABASE_KEY,
-#             "Authorization": f"Bearer {SUPABASE_KEY}",
-#             "Content-Type": "application/json",
-#             "Prefer": "return=representation",
-#         }
-#     )
-#
-#     if response.status_code not in (200, 204):
-#         print("Supabase last_login update error:", response.text)
-#
+    except Exception as e:
+        print("sync_google_user_supabase failed:", str(e))

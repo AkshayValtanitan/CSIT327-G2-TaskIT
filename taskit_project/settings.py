@@ -17,6 +17,7 @@ import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 if os.environ.get("RENDER", "") != "true":
     load_dotenv()
@@ -26,6 +27,13 @@ if os.environ.get("RENDER", "") != "true":
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECURITY WARNING: don't run with debug turned on in production!
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+SUPABASE_USERS_TABLE = os.getenv("SUPABASE_USERS_TABLE", "users")
+SUPABASE_TASKS_TABLE = os.getenv("SUPABASE_TASKS_TABLE", "task")
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
 
