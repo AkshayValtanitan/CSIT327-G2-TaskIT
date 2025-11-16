@@ -524,7 +524,16 @@
                         body: JSON.stringify(payload)
                     });
                 } else {
-                    // Create new task
+                    
+                    const tasks = await apiGetTasks(new Date().getFullYear(), new Date().getMonth());
+                    const currentTasks = tasks.filter(t => (t.status || 'pending').toLowerCase() !== 'completed');
+
+                    if (currentTasks.length >= 5) {
+                        formError.textContent = 'You have too many current tasks! Consider completing some before adding more.';
+                        return;
+                    }
+                  
+
                     await fetch('/api/tasks/', {
                         method: 'POST',
                         headers: { 

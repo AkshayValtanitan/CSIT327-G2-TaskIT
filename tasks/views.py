@@ -158,11 +158,15 @@ def weekly_summary_api(request):
     start = today - timedelta(days=today.weekday())  # Monday
     end = start + timedelta(days=6)  # Sunday
 
+
     # qs = Task.objects.filter(user=supabase_user, date__gte=start, date__lte=end)
     qs = Task.objects.filter(user=local_user, date__gte=start, date__lte=end)
     total = qs.count()
     completed = qs.filter(status__iexact="Completed").count()
     pending = qs.exclude(status__iexact="Completed").count()
+
+    WARNING_THRESHOLD = 5 
+    overload_warning = total > WARNING_THRESHOLD
 
     return JsonResponse({
         "start": str(start),
@@ -170,6 +174,7 @@ def weekly_summary_api(request):
         "total": total,
         "completed": completed,
         "pending": pending,
+        "overload_warning": overload_warning,
     })
 
 @login_required(login_url='login')
