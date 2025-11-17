@@ -30,7 +30,7 @@ def login_view(request):
     email_error = None
     username_error = None
     general_error = None
-
+ 
     if request.method == "POST":
         email = request.POST.get("email", "").strip()
         username = request.POST.get("username", "").strip()
