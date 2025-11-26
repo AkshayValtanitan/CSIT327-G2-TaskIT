@@ -9,6 +9,11 @@ from taskit_project.supabase_client import supabase
 from calendar import monthrange
 from datetime import datetime, date, timedelta, time
 
+def delete_old_tasks(user_id: str, days_old: int = 30):
+    # delete tasks older than 30
+    cutoff_date = (date.today() - timedelta(days=days_old)).isoformat()
+    supabase.table("task").delete().eq("user_id", user_id).lt("date", cutoff_date).execute()
+
 @login_required(login_url='login')
 @require_http_methods(["GET", "POST"])
 def tasks_api(request):
@@ -16,6 +21,8 @@ def tasks_api(request):
     print("User ID in session:", user_id)
     if not user_id:
         return JsonResponse({"error": "Supabase user_id not found"}, status=400)
+    
+    delete_old_tasks(user_id)
 
     if request.method == "GET":
         year = request.GET.get("year")
@@ -107,6 +114,9 @@ def weekly_summary_api(request):
     user_id = request.session.get("supabase_user_id")
     if not user_id:
         return JsonResponse({"error": "Supabase user_id not found"}, status=400)
+    
+    delete_old_tasks(user_id)
+
     today = timezone.localdate()
     start = today - timedelta(days=today.weekday())
     end = start + timedelta(days=6)

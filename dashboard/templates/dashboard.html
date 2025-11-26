@@ -10,6 +10,11 @@
 <body class="{% if request.session.theme == 'dark' %}dark-mode{% endif %}">
     <div class="sidebar">
         <h2>Dashboard</h2>
+
+        <div style="margin: 12px 0;">
+            <button id="openQuickAdd" class="button addtask">Add Task</button>
+        </div>
+
         <button id="theme-toggle">Toggle Theme</button>
         <form method="get" action="{% url 'dashboard' %}">
             <button type="submit">Dashboard</button>
@@ -19,54 +24,69 @@
         </form>
         <form action="{% url 'logout' %}" method="POST">
             {% csrf_token %}
-            <button type="submit">Log Out</button>
+            <button type="submit" id="logoutButton">Log Out</button>
         </form>
     </div>
 
+    <div id="welcomeModal" class="welcome-modal" aria-hidden="true" role="dialog">
+        <div class="welcome-modal-content">
+            <h2>Welcome!</h2>
+        </div>
+    </div>
+
     <div class="main">
-        <h1>Welcome User!</h1>
-        <p>This is your dashboard.</p>
-        <div id="weeklySummary" style="display:flex; gap:16px; margin: 12px 0; flex-wrap: wrap;">
-            <div style="padding:12px 16px; border-radius:8px; background:#f1f5f9; min-width:180px;">
-                <div style="font-size:12px; color:#475569;">Week Range</div>
-                <div id="ws-range" style="font-weight:600;">—</div>
-            </div>
-            <div style="padding:12px 16px; border-radius:8px; background:#f1f5f9; min-width:120px;">
-                <div style="font-size:12px; color:#475569;">Total</div>
-                <div id="ws-total" style="font-weight:700; font-size:20px;">0</div>
-            </div>
-            <div style="padding:12px 16px; border-radius:8px; background:#e8f5e9; min-width:120px;">
-                <div style="font-size:12px; color:#2e7d32;">Completed</div>
-                <div id="ws-completed" style="font-weight:700; font-size:20px;">0</div>
-            </div>
-            <div style="padding:12px 16px; border-radius:8px; background:#fff8e1; min-width:120px;">
-                <div style="font-size:12px; color:#b26a00;">Pending</div>
-                <div id="ws-pending" style="font-weight:700; font-size:20px;">0</div>
-            </div>
-            <div class="percentage-container">
-                <b><p>Completion Statistics</p></b>
-                <div class="circle-container">
-                    <div class="circle" id="completion-circle">0%</div>
+        <div id="weeklySummary" style="display:flex; gap:16px; margin: 12px 0; flex-wrap: wrap; flex-direction: row;">
+            <div class="weekly-report">
+                <div class="summary-week">
+                    <div style="padding:12px 16px; border-radius:8px; background:#f1f5f9; min-width:180px; height: 50px;">
+                        <div style="font-size:12px; color:#475569;">Week Range</div>
+                        <div id="ws-range" style="font-weight:600;">—</div>
+                    </div>
+                    <div style="padding:12px 16px; border-radius:8px; background:#f1f5f9; min-width:120px; height: 50px;">
+                        <div style="font-size:12px; color:#475569;">Total</div>
+                        <div id="ws-total" style="font-weight:700; font-size:20px;">0</div>
+                    </div>
+                    <div style="padding:12px 16px; border-radius:8px; background:#e8f5e9; min-width:120px; height: 50px;">
+                        <div style="font-size:12px; color:#2e7d32;">Completed</div>
+                        <div id="ws-completed" style="font-weight:700; font-size:20px;">0</div>
+                    </div>
+                    <div style="padding:12px 16px; border-radius:8px; background:#fff8e1; min-width:120px; height: 50px;">
+                        <div style="font-size:12px; color:#b26a00;">Pending</div>
+                        <div id="ws-pending" style="font-weight:700; font-size:20px;">0</div>
+                    </div>
+                </div>
+
+                <div id="lists" style="display:flex; gap:20px; margin: 10px 0; flex-wrap: wrap; font-size: 10px;">
+                    <div class="task-categories unfinished">
+                        <h3>Unfinished</h3>
+                        <ul id="unfinishedList"></ul>
+                    </div>
+                    <div class="task-categories completed">
+                        <h3>Completed</h3>
+                        <ul id="completedList"></ul>
+                    </div>
+                    <div class="task-categories overdue" id="overdue">
+                        <h3>Overdue</h3>
+                        <ul id="overdueTasks"></ul>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div style="margin: 12px 0;">
-            <button id="openQuickAdd" class="btn-primary">Quick Add Task</button>
-        </div>
-        <div id="lists" style="display:flex; gap:20px; margin: 10px 0; flex-wrap: wrap;">
-            <div style="flex:1; min-width:280px;">
-                <h3>Unfinished</h3>
-                <ul id="unfinishedList"></ul>
+            <div class="circleNlabels">
+                <div class="percentage-container">
+                    <b><p>Completion Statistics</p></b>
+
+                    <div class="circle-container">
+                        <div class="circle" id="completion-circle">0%</div>
+                        <div class="circle small"></div>
+                    </div>
+                </div>
+                <div class="percent-labels">
+                        <p><span class="color-box green"></span> Completed: <span id="completed-pct">0%</span></p>
+                        <p><span class="color-box red"></span> Overdue: <span id="overdue-pct">0%</span></p>
+                        <p><span class="color-box yellow"></span> Unfinished: <span id="unfinished-pct">0%</span></p>
+                    </div>
             </div>
-            <div style="flex:1; min-width:280px;">
-                <h3>Completed</h3>
-                <ul id="completedList"></ul>
-            </div>
-            <section id="overdue">
-                <h3>Overdue</h3>
-                <ul id="overdueTasks"></ul>
-            </section>
         </div>
         
         <div class="calendar-box">
@@ -175,6 +195,27 @@
             const hour = i % 12 || 12;
             const ampm = i < 12 ? "AM" : "PM";
             return `${hour} ${ampm}`;
+        });
+
+        window.addEventListener('load', () => {
+            const modal = document.getElementById('welcomeModal');
+
+            if (!localStorage.getItem("welcomeShown")) {
+                modal.classList.add('show');
+
+                setTimeout(() => {
+                    modal.classList.remove('show');
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                    }, 500); 
+                }, 2000); 
+                
+                localStorage.setItem("welcomeShown", "true");
+            }
+        });
+
+        document.querySelector('#logoutButton').addEventListener('click', () => {
+            localStorage.removeItem("welcomeShown");
         });
 
         if (localStorage.getItem("theme") === "dark") {
@@ -586,13 +627,17 @@
                 const unfinishedPercent = total ? (unfinished / total) * 100 : 0;
 
                 const circle = document.getElementById('completion-circle');
-                circle.textContent = Math.round(completedPercent) + '%';
+                document.getElementById('completed-pct').textContent = Math.round(completedPercent) + '%';
+                document.getElementById('overdue-pct').textContent = Math.round(overduePercent) + '%';
+                document.getElementById('unfinished-pct').textContent = Math.round(unfinishedPercent) + '%';
+
+                // circle.textContent = Math.round(completedPercent) + '%';
 
                 circle.style.background = `
                     conic-gradient(
-                        green 0% ${completedPercent}%,
-                        rgb(199, 63, 63) ${completedPercent}% ${completedPercent + overduePercent}%,
-                        rgb(241, 199, 106) ${completedPercent + overduePercent}% 100%
+                        #0ab913 0% ${completedPercent}%,
+                        #ffb3b3 ${completedPercent}% ${completedPercent + overduePercent}%,
+                        #ffed9c ${completedPercent + overduePercent}% 100%
                     )
                 `;
             })
