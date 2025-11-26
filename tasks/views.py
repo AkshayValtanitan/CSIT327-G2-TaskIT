@@ -125,12 +125,16 @@ def weekly_summary_api(request):
     completed = sum(1 for t in tasks if t.get("status", "").lower() == "completed")
     pending = total - completed
 
+    WARNING_THRESHOLD = 5 
+    overload_warning = total > WARNING_THRESHOLD
+
     return JsonResponse({
         "start": str(start),
         "end": str(end),
         "total": total,
         "completed": completed,
         "pending": pending,
+        "overload_warning": overload_warning,
     })
 
 
