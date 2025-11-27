@@ -27,12 +27,15 @@ body {
     position: fixed;
     box-sizing: border-box;
     overflow-y: auto;
+
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar button {
     width: 100%;
     padding: 10px;
-    margin-top: 20px;
+    margin-top: 10px;
     background-color: #4CAF50;
     border: none;
     color: white;
@@ -44,7 +47,7 @@ button.addtask {
     background-color: #2563eb;
     color: #fff;
     border: none;
-    padding: 10px 14px;
+    /* padding: 10px 14px; */
     border-radius: 6px;
     cursor: pointer;
 }
@@ -55,6 +58,69 @@ button.addtask {
 
 button.addtask:hover {
     background-color: #7d99d3;
+}
+
+
+.sidebar-bottom {
+    margin-top: auto; 
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tutbtn{
+    background-color: #d1d15d !important;
+    color: #c4c4c4;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.tutbtn:hover{
+    background-color: #9d9d3c !important;
+    color: #c4c4c4;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.themebtn {
+    background-color: #d1d1d1 !important;
+    color: #515151 !important;
+    border: none;
+    margin-bottom: 20px;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.themebtn:hover {
+    background-color: #686868 !important;
+    color: #fff !important;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+body.dark-mode .themebtn {
+    background-color: #686868 !important;
+    color: #fff !important;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+body.dark-mode .themebtn:hover {
+    background-color: #d1d1d1 !important;
+    color: #515151 !important;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
 }
 
 .main {
@@ -141,7 +207,7 @@ button.addtask:hover {
 
 .calendar-container {
     width: 100%;
-    height: 400px;
+    height: 600px;
     /* height: calc(100vh - 100px); fills the remaining viewport height */
     overflow-x: auto;
     overflow-y: auto;

@@ -6,26 +6,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weekly Calendar</title>
     <link rel="stylesheet" href="{% static 'login/css/dashboard.css' %}?v={% now 'U' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
 </head>
 <body class="{% if request.session.theme == 'dark' %}dark-mode{% endif %}">
-    <div class="sidebar">
+    <div class="sidebar"
+        data-step="1" 
+        data-intro="This is your sidebar. You can navigate your dashboard here.">
         <h2>Dashboard</h2>
 
-        <div style="margin: 12px 0;">
+        <button onclick="startTutorial()" class="tutbtn">Start Tutorial</button>
+
+        <div
+            data-step="2" 
+            data-intro="Click here to add a new task.">
             <button id="openQuickAdd" class="button addtask">Add Task</button>
         </div>
+        
+        <button id="theme-toggle" class="themebtn">Toggle Theme</button>
 
-        <button id="theme-toggle">Toggle Theme</button>
         <form method="get" action="{% url 'dashboard' %}">
             <button type="submit">Dashboard</button>
         </form>
         <form method="get" action="{% url 'settings' %}">
             <button type="submit">Settings</button>
         </form>
-        <form action="{% url 'logout' %}" method="POST">
-            {% csrf_token %}
-            <button type="submit" id="logoutButton">Log Out</button>
-        </form>
+
+        <div class="sidebar-bottom">
+            <form action="{% url 'logout' %}" method="POST">
+                {% csrf_token %}
+                <button type="submit" id="logoutButton">Log Out</button>
+            </form>
+        </div>
+        
     </div>
 
     <div id="welcomeModal" class="welcome-modal" aria-hidden="true" role="dialog">
@@ -93,7 +106,9 @@
             <div class="calendar-header">
                 <h1 class="month-year" id="monthYear"></h1>
             </div>
-            <div class="calendar-container">
+            <div class="calendar-container"
+                    data-step="4" 
+                    data-intro="Once finished they will be added to the calendar!">
                 <div class="calendar-grid" id="calendarGrid"></div>
             </div>
         </div>
@@ -108,7 +123,9 @@
                 <button id="closeQuickAdd" class="icon-btn" aria-label="Close">✕</button>
             </div>
             <form id="quickAddForm" novalidate>
-                <div class="form-grid">
+                <div class="form-grid"
+                    data-step="3" 
+                    data-intro="After filling up the form you can press Add Task">
                     <label>
                         <span>Title</span>
                         <input type="text" id="taskTitle" name="title" placeholder="e.g., Math assignment" required>
@@ -227,6 +244,37 @@
             const theme = body.classList.contains("dark-mode") ? "dark" : "light";
             localStorage.setItem("theme", theme);
         });
+
+        window.addEventListener('load', () => {
+            if (!localStorage.getItem("tutorialShown")) {
+                introJs().start();
+                localStorage.setItem("tutorialShown", "true");
+            }
+        });
+
+        function startTutorial() {
+            introJs().start();
+        }
+
+        window.addEventListener('load', () => {
+            const currentDateCell = document.querySelector(`.cell.current-day.current-time`);
+            const calendarContainer = document.querySelector('.calendar-container');
+
+            if (currentDateCell && calendarContainer) {
+                // Calculate the offset to center the current cell
+                const offsetLeft = currentDateCell.offsetLeft - calendarContainer.offsetWidth / 2 + currentDateCell.offsetWidth / 2;
+                const offsetTop = currentDateCell.offsetTop - calendarContainer.offsetHeight / 2 + currentDateCell.offsetHeight / 2;
+
+                calendarContainer.scrollTo({
+                    left: offsetLeft,
+                    top: offsetTop,
+                    behavior: 'smooth' // optional for smooth scrolling
+                });
+            }
+        });
+
+
+
 
         // populate hour select in modal
         function populateHourSelect() {
