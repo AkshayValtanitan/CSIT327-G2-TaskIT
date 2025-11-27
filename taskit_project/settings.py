@@ -91,7 +91,7 @@ SOCIALACCOUNT_ADAPTER = "login.adapters.MySocialAccountAdapter"
 EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL")
-
+SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
