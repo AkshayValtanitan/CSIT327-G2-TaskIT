@@ -77,6 +77,17 @@ AUTH_USER_MODEL = 'auth.User'
 SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
 SOCIALACCOUNT_ADAPTER = "login.adapters.MySocialAccountAdapter"
 
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Gmail SMTP configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv("HOST_EMAIL")
+EMAIL_HOST_PASSWORD = os.getenv("APP_PASSWORD")
+DEFAULT_FROM_EMAIL = 'TaskIt App shanenathanarchival@gmail.com' #------------
+
+
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 
