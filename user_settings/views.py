@@ -35,9 +35,11 @@ def supabase_client():
 def dashboard_view(request):
     return render(request, 'dashboard.html')
 
-
 @login_required(login_url='login')
 def send_otp_view(request):
+    if request.method != "POST":
+        return redirect("settings")
+
     user_id = request.session.get("supabase_user_id")
     if not user_id:
         messages.error(request, "User not recognized.")
@@ -54,14 +56,14 @@ def send_otp_view(request):
     # Generate OTP
     otp = str(random.randint(100000, 999999))
 
-    # save OTP in Supabase
+    # Save OTP in Supabase
     supabase_service.table("users").update({"otp": otp}).eq("user_id", user_id).execute()
 
-    # send OTP via on email
+    # Send OTP email
     send_mail(
         "Your OTP Code",
         f"Your OTP is: {otp}",
-        settings.DEFAULT_FROM_EMAIL,
+        settings.DEFAULT_FROM_EMAIL,  # SendGrid verified email
         [email],
         fail_silently=False,
     )
@@ -71,6 +73,44 @@ def send_otp_view(request):
 
     messages.success(request, f"OTP sent to {email}")
     return redirect("settings")
+
+
+
+# @login_required(login_url='login')
+# def send_otp_view(request):
+#     user_id = request.session.get("supabase_user_id")
+#     if not user_id:
+#         messages.error(request, "User not recognized.")
+#         return redirect("settings")
+
+#     # Get user's email from Supabase
+#     resp = supabase_service.table("users").select("email").eq("user_id", user_id).execute()
+#     row = getattr(resp, "data", [])[0]
+#     email = row.get("email")
+#     if not email:
+#         messages.error(request, "No email registered. Please set your email first.")
+#         return redirect("settings")
+
+#     # Generate OTP
+#     otp = str(random.randint(100000, 999999))
+
+#     # save OTP in Supabase
+#     supabase_service.table("users").update({"otp": otp}).eq("user_id", user_id).execute()
+
+#     # send OTP via on email
+#     send_mail(
+#         "Your OTP Code",
+#         f"Your OTP is: {otp}",
+#         settings.DEFAULT_FROM_EMAIL,
+#         [email],
+#         fail_silently=False,
+#     )
+
+#     request.session["otp_email"] = email
+#     request.session["otp_sent"] = True
+
+#     messages.success(request, f"OTP sent to {email}")
+#     return redirect("settings")
 
 
 @login_required(login_url='login')
