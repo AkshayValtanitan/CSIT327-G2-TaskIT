@@ -12,6 +12,7 @@ body {
 }
 
 .main {
+    margin-left: 200px;
     flex: 1;
     padding: 40px;
     min-width: 0;
@@ -23,13 +24,18 @@ body {
     color: white;
     height: 100vh;
     padding: 20px;
+    position: fixed;
     box-sizing: border-box;
+    overflow-y: auto;
+
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar button {
     width: 100%;
     padding: 10px;
-    margin-top: 20px;
+    margin-top: 10px;
     background-color: #4CAF50;
     border: none;
     color: white;
@@ -37,8 +43,84 @@ body {
     border-radius: 5px;
 }
 
+button.addtask {
+    background-color: #2563eb;
+    color: #fff;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 .sidebar button:hover {
     background-color: #45a049;
+}
+
+button.addtask:hover {
+    background-color: #7d99d3;
+}
+
+
+.sidebar-bottom {
+    margin-top: auto; 
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tutbtn{
+    background-color: #d1d15d !important;
+    color: #c4c4c4;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.tutbtn:hover{
+    background-color: #9d9d3c !important;
+    color: #c4c4c4;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.themebtn {
+    background-color: #d1d1d1 !important;
+    color: #515151 !important;
+    border: none;
+    margin-bottom: 20px;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.themebtn:hover {
+    background-color: #686868 !important;
+    color: #fff !important;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+body.dark-mode .themebtn {
+    background-color: #686868 !important;
+    color: #fff !important;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+body.dark-mode .themebtn:hover {
+    background-color: #d1d1d1 !important;
+    color: #515151 !important;
+    border: none;
+    /* padding: 10px 14px; */
+    border-radius: 6px;
+    cursor: pointer;
 }
 
 .main {
@@ -93,12 +175,6 @@ body.dark-mode .sidebar{
     max-width: 500px;
 }
 
-.section-title {
-    margin-bottom: 16px;
-    font-size: 22px;
-    font-weight: 600;
-}
-
 .card-box {
     background: var(--bg-secondary, #f0f0f0);
     padding: 20px;
@@ -116,6 +192,12 @@ body.dark-mode .sidebar{
     margin-bottom: 18px;
     font-size: 14px;
     opacity: 0.8;
+}
+
+.section-title {
+    margin-bottom: 16px;
+    font-size: 22px;
+    font-weight: 600;
 }
 
 .form-label {
@@ -148,6 +230,7 @@ body.dark-mode .sidebar{
     font-size: 15px;
     cursor: pointer;
     transition: 0.2s;
+    margin-bottom: 10px;
 }
 
 .btn-primary:hover {

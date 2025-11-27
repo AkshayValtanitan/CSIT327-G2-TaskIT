@@ -6,27 +6,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings</title>
     <link rel="stylesheet" href="{% static 'login/css/settings.css' %}?v={% now 'U' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
 </head>
 <body class="{% if request.session.theme == 'dark' %}dark-mode{% endif %}">
     <div class="sidebar">
-        <h2>Settings Page</h2>
-        <button id="theme-toggle">Toggle Theme</button>
+        <h2>Dashboard</h2>
+
+        <button onclick="startTutorial()" class="tutbtn">Start Tutorial</button>
+        
+        <button id="theme-toggle" class="themebtn">Toggle Theme</button>
+
         <form method="get" action="{% url 'dashboard' %}">
             <button type="submit">Dashboard</button>
         </form>
         <form method="get" action="{% url 'settings' %}">
             <button type="submit">Settings</button>
         </form>
-        <form action="{% url 'logout' %}" method="POST">
-            {% csrf_token %}
-            <button type="submit">Log Out</button>
-        </form>
 
+        <div class="sidebar-bottom">
+            <form action="{% url 'logout' %}" method="POST">
+                {% csrf_token %}
+                <button type="submit" id="logoutButton">Log Out</button>
+            </form>
+        </div>
+        
     </div>
 
-    <div class="main">
+    <div class="main" 
+            data-step="1" 
+            data-intro="This is your settings.">
         <h1>Preferences</h1>
-        <form method="post" style="max-width:420px;">
+        <form method="post" style="max-width:420px;" 
+                data-step="2" 
+                data-intro="Here, you can change the theme.">
             {% csrf_token %}
             <label style="display:block; margin: 12px 0;">
                 <span>Theme</span>
@@ -40,49 +53,53 @@
             </div>
         </form>
         
-        <div class="changepass">
-            <h2 class="section-title">Change Password</h2>
-
-            <!-- Step 1: Send OTP -->
-            {% if not request.session.otp_sent %}
-            <form method="post" action="{% url 'send_otp' %}" class="card-box">
-                {% csrf_token %}
+        
+        <div class="changepass"
+                data-step="3" 
+                data-intro="Click here to change your password.">
+            <div class="card-box">
+                <h2 class="section-title">Change Password</h2>
                 <p class="description">
                     To change your password, click the button below to send an OTP to your registered email.
                 </p>
-                <button type="submit" class="btn-primary full-width">
-                    Send OTP to Email
-                </button>
-            </form>
-            {% endif %}
-
-            <!-- Step 2: Enter OTP + new password -->
-            {% if request.session.otp_sent %}
-            <form method="post" action="{% url 'settings' %}" class="card-box">
-                {% csrf_token %}
-                
-                <label class="form-label">
-                    OTP
-                    <input type="text" name="otp" class="form-input" required>
-                </label>
-
-                <label class="form-label">
-                    New Password
-                    <input type="password" name="new_password" class="form-input" required>
-                </label>
-
-                <label class="form-label">
-                    Confirm Password
-                    <input type="password" name="confirm_password" class="form-input" required>
-                </label>
-
-                <button type="submit" class="btn-primary full-width">
-                    Change Password
-                </button>
-            </form>
-            {% endif %}
+                <!-- enter email to send otp -->
+                <form method="post" action="{% url 'send_otp' %}" 
+                        data-step="4" 
+                        data-intro="You must enter a valid email first to get an OTP.">
+                    {% csrf_token %}
+                    <label class="form-label">
+                        Email
+                        <input type="email" name="email" class="form-input" required>
+                    </label>
+                    <div style="margin-top:12px;">
+                        <button type="submit" class="btn-primary">Send OTP to Email</button>
+                    </div>
+                </form>
+                {% if request.session.otp_sent or request.session.show_password_form %}
+                <!-- enter otp nad the new password -->
+                <form method="post" style="max-width:420px;" action="{% url 'settings' %}"
+                        data-step="5" 
+                        data-intro="Enter the OTP and your new password then confirm.">
+                    {% csrf_token %}
+                    <label class="form-label">
+                        OTP
+                        <input type="text" name="otp" class="form-input" required>
+                    </label>
+                    <label class="form-label">
+                        New Password
+                        <input type="password" name="new_password" class="form-input" required>
+                    </label>
+                    <label class="form-label">
+                        Confirm Password
+                        <input type="password" name="confirm_password" class="form-input" required>
+                    </label>
+                    <div style="margin-top:12px;">
+                        <button type="submit" class="btn-primary">Change Password</button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
         </div>
-
         
 
     </div>
@@ -99,6 +116,17 @@
             const theme = body.classList.contains("dark-mode") ? "dark" : "light";
             localStorage.setItem("theme", theme);
         });
+
+        window.addEventListener('load', () => {
+            if (!localStorage.getItem("tutorialShown")) {
+                introJs().start();
+                localStorage.setItem("tutorialShown", "true");
+            }
+        });
+
+        function startTutorial() {
+            introJs().start();
+        }
     </script>
 </body>
 </html>
