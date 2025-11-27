@@ -39,6 +39,52 @@
                 <button type="submit" class="btn-primary">Save</button>
             </div>
         </form>
+        
+        <div class="changepass">
+            <h2 class="section-title">Change Password</h2>
+
+            <!-- Step 1: Send OTP -->
+            {% if not request.session.otp_sent %}
+            <form method="post" action="{% url 'send_otp' %}" class="card-box">
+                {% csrf_token %}
+                <p class="description">
+                    To change your password, click the button below to send an OTP to your registered email.
+                </p>
+                <button type="submit" class="btn-primary full-width">
+                    Send OTP to Email
+                </button>
+            </form>
+            {% endif %}
+
+            <!-- Step 2: Enter OTP + new password -->
+            {% if request.session.otp_sent %}
+            <form method="post" action="{% url 'settings' %}" class="card-box">
+                {% csrf_token %}
+                
+                <label class="form-label">
+                    OTP
+                    <input type="text" name="otp" class="form-input" required>
+                </label>
+
+                <label class="form-label">
+                    New Password
+                    <input type="password" name="new_password" class="form-input" required>
+                </label>
+
+                <label class="form-label">
+                    Confirm Password
+                    <input type="password" name="confirm_password" class="form-input" required>
+                </label>
+
+                <button type="submit" class="btn-primary full-width">
+                    Change Password
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        
+
     </div>
     <script>
         const toggle = document.getElementById("theme-toggle");
@@ -56,5 +102,3 @@
     </script>
 </body>
 </html>
-
-
