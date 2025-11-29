@@ -4,10 +4,9 @@ from django.contrib.auth.decorators import login_required
 import json
 import uuid
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, date, timedelta, time
 from taskit_project.supabase_client import supabase
 from calendar import monthrange
-from datetime import datetime, date, timedelta, time
 
 def delete_old_tasks(user_id: str, days_old: int = 30):
     # delete tasks older than 30
@@ -18,7 +17,6 @@ def delete_old_tasks(user_id: str, days_old: int = 30):
 @require_http_methods(["GET", "POST"])
 def tasks_api(request):
     user_id = request.session.get("supabase_user_id")
-    print("User ID in session:", user_id)
     if not user_id:
         return JsonResponse({"error": "Supabase user_id not found"}, status=400)
     
@@ -170,16 +168,15 @@ def weekly_completion_stats_api(request):
     #     .lte("date", end_iso)\
     #     .execute()
     
-    tasks_res = supabase.table("task").select("*")\
-        .eq("user_id", user_id)\
+    tasks_res = (
+        supabase.table("task")
+        .select("*")
+        .eq("user_id", user_id)
+        .gte("date", start_iso)
+        .lte("date", end_iso)
         .execute()
+    )
 
-    tasks = tasks_res.data or []
-
-    print("DEBUG: total tasks fetched for user:", len(tasks))
-    for t in tasks:
-        print("DEBUG TASK:", t.get("date"), t.get("status"))
-    
     tasks = tasks_res.data or []
 
     total = len(tasks)

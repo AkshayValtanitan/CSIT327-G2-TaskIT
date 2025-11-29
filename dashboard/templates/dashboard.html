@@ -48,28 +48,40 @@
     </div>
 
     <div class="main">
-        <div id="weeklySummary" style="display:flex; gap:16px; margin: 12px 0; flex-wrap: wrap; flex-direction: row;">
-            <div class="weekly-report">
+        <div class="dashboard-toolbar">
+            <div>
+                <h1>Weekly Overview</h1>
+                <p id="analyticsStatus" class="analytics-status" role="status" aria-live="polite">Preparing data…</p>
+            </div>
+            <div class="toolbar-actions">
+                <button id="refreshDashboard" class="btn-secondary compact" type="button">Refresh</button>
+            </div>
+        </div>
+        <div id="weeklySummary" class="weekly-summary">
+            <div class="weekly-report" data-step="2" data-intro="Track how your week is progressing.">
                 <div class="summary-week">
-                    <div style="padding:12px 16px; border-radius:8px; background:#f1f5f9; min-width:180px; height: 50px;">
-                        <div style="font-size:12px; color:#475569;">Week Range</div>
-                        <div id="ws-range" style="font-weight:600;">—</div>
+                    <div class="summary-card">
+                        <p class="summary-label">Week Range</p>
+                        <p id="ws-range" class="summary-value">—</p>
                     </div>
-                    <div style="padding:12px 16px; border-radius:8px; background:#f1f5f9; min-width:120px; height: 50px;">
-                        <div style="font-size:12px; color:#475569;">Total</div>
-                        <div id="ws-total" style="font-weight:700; font-size:20px;">0</div>
+                    <div class="summary-card">
+                        <p class="summary-label">Total</p>
+                        <p id="ws-total" class="summary-value emphasis">0</p>
                     </div>
-                    <div style="padding:12px 16px; border-radius:8px; background:#e8f5e9; min-width:120px; height: 50px;">
-                        <div style="font-size:12px; color:#2e7d32;">Completed</div>
-                        <div id="ws-completed" style="font-weight:700; font-size:20px;">0</div>
+                    <div class="summary-card success">
+                        <p class="summary-label">Completed</p>
+                        <p id="ws-completed" class="summary-value emphasis">0</p>
                     </div>
-                    <div style="padding:12px 16px; border-radius:8px; background:#fff8e1; min-width:120px; height: 50px;">
-                        <div style="font-size:12px; color:#b26a00;">Pending</div>
-                        <div id="ws-pending" style="font-weight:700; font-size:20px;">0</div>
+                    <div class="summary-card warning">
+                        <p class="summary-label">Pending</p>
+                        <p id="ws-pending" class="summary-value emphasis">0</p>
                     </div>
                 </div>
+                <div id="ws-warning" class="summary-alert hidden" role="alert">
+                    Heavy load detected. Consider completing or rescheduling some tasks.
+                </div>
 
-                <div id="lists" style="display:flex; gap:20px; margin: 10px 0; flex-wrap: wrap; font-size: 10px;">
+                <div id="lists" class="task-lists">
                     <div class="task-categories unfinished">
                         <h3>Unfinished</h3>
                         <ul id="unfinishedList"></ul>
@@ -183,6 +195,9 @@
         const taskDate = document.getElementById("taskDate");
         const taskHour = document.getElementById("taskHour");
         const taskColor = document.getElementById("taskColor");
+        const taskDescription = document.getElementById("taskDescription");
+        const taskPriorityField = document.getElementById("taskPriority");
+        const taskStatusField = document.getElementById("taskStatus");
         const formError = document.getElementById("formError");
         const toggle = document.getElementById("theme-toggle");
         const body = document.body;
@@ -190,7 +205,21 @@
         const wsTotal = document.getElementById("ws-total");
         const wsCompleted = document.getElementById("ws-completed");
         const wsPending = document.getElementById("ws-pending");
-        const overdue = document.getElementById("overdueTasks");
+        const overdueList = document.getElementById("overdueTasks");
+        const analyticsStatus = document.getElementById("analyticsStatus");
+        const refreshDashboardBtn = document.getElementById("refreshDashboard");
+        const wsWarningBanner = document.getElementById("ws-warning");
+        const completionCircle = document.getElementById("completion-circle");
+        const completedPctLabel = document.getElementById("completed-pct");
+        const overduePctLabel = document.getElementById("overdue-pct");
+        const unfinishedPctLabel = document.getElementById("unfinished-pct");
+        const listsContainer = document.getElementById("lists");
+        const calendarContainer = document.querySelector(".calendar-container");
+        let tasksCache = [];
+        let summaryCache = null;
+        let completionCache = null;
+        let isRefreshing = false;
+        const cellLookup = new Map();
         let editingTaskId = null;
 
         const now = new Date();
@@ -213,6 +242,27 @@
             const ampm = i < 12 ? "AM" : "PM";
             return `${hour} ${ampm}`;
         });
+        const buildCellKey = (day, hour) => `${day}-${hour}`;
+        const PRIORITY_OPTIONS = ['Low', 'Medium', 'High'];
+        const STATUS_OPTIONS = ['Pending', 'Completed'];
+
+        function normalizeSelection(value, options, fallback) {
+            const comparison = (value || '').toString().toLowerCase();
+            const match = options.find(opt => opt.toLowerCase() === comparison);
+            return match || fallback;
+        }
+
+        function setAnalyticsStatus(message, variant = "neutral") {
+            if (!analyticsStatus) return;
+            analyticsStatus.textContent = message;
+            analyticsStatus.dataset.variant = variant;
+        }
+
+        function toggleRefresh(disabled) {
+            if (!refreshDashboardBtn) return;
+            refreshDashboardBtn.disabled = disabled;
+            refreshDashboardBtn.setAttribute("aria-busy", disabled ? "true" : "false");
+        }
 
         window.addEventListener('load', () => {
             const modal = document.getElementById('welcomeModal');
@@ -258,7 +308,6 @@
 
         window.addEventListener('load', () => {
             const currentDateCell = document.querySelector(`.cell.current-day.current-time`);
-            const calendarContainer = document.querySelector('.calendar-container');
 
             if (currentDateCell && calendarContainer) {
                 // Calculate the offset to center the current cell
@@ -322,6 +371,7 @@
                 cell.className = "cell";
                 cell.dataset.day = String(day);
                 cell.dataset.hour = String(hourIndex);
+                cellLookup.set(buildCellKey(day, hourIndex), cell);
 
                 // highlight current day & hour
                 if (day === currentDate) {
@@ -397,104 +447,124 @@
             if (!res.ok) throw new Error('Failed to fetch weekly summary');
             return res.json();
         }
+        async function apiWeeklyCompletionStats() {
+            const res = await fetch('/api/tasks/weekly_completion_stats/', { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('Failed to fetch completion stats');
+            return res.json();
+        }
 
         // Render tasks onto calendar
-        async function renderTasks() {
-            // remove existing pills
+        async function renderTasks(tasksOverride = null) {
             document.querySelectorAll('.event-pill').forEach(el => el.remove());
             const year = now.getFullYear();
-            const month = now.getMonth();
-            let tasks = [];
-            try {
-                tasks = await apiGetTasks(year, month + 1);
+            const monthIndex = now.getMonth();
+            let tasks = tasksOverride;
+
+            if (!tasks) {
+                try {
+                    tasks = await apiGetTasks(year, monthIndex + 1);
             } catch (e) {
                 console.error(e);
-                const lists = document.getElementById('lists');
-                lists.innerHTML = '<p style="color:red;">Failed to fetch tasks. Please refresh.</p>';
+                    setAnalyticsStatus('Failed to fetch tasks', 'error');
+                    return;
+                }
             }
 
-            // sort: high > medium > low, then date/hour
             const priorityRank = { high: 0, medium: 1, low: 2 };
-            tasks.sort((a,b)=>{
-                const pr = (priorityRank[a.priority||'medium'] - priorityRank[b.priority||'medium']);
-                if (pr !== 0) return pr;
-                const ad = new Date(a.date); const bd = new Date(b.date);
-                if (ad - bd !== 0) return ad - bd;
-                return (a.hour||0) - (b.hour||0);
+            const sortedTasks = tasks.slice().sort((a, b) => {
+                const aPriority = priorityRank[(a.priority || 'medium').toLowerCase()] ?? 1;
+                const bPriority = priorityRank[(b.priority || 'medium').toLowerCase()] ?? 1;
+                if (aPriority !== bPriority) return aPriority - bPriority;
+                const ad = new Date(a.date);
+                const bd = new Date(b.date);
+                if (ad.getTime() !== bd.getTime()) return ad - bd;
+                return (Number(a.hour) || 0) - (Number(b.hour) || 0);
             });
 
             const unfinished = document.getElementById('unfinishedList');
             const completed = document.getElementById('completedList');
-            // unfinished.innerHTML = '';
-            // completed.innerHTML = '';
 
-            unfinished.innerHTML = "";
-            completed.innerHTML = "";
-            overdue.innerHTML = "";
+            if (unfinished) unfinished.innerHTML = '';
+            if (completed) completed.innerHTML = '';
+            if (overdueList) overdueList.innerHTML = '';
 
-            tasks.forEach(t => {
+            const unfinishedFragment = document.createDocumentFragment();
+            const completedFragment = document.createDocumentFragment();
+            const overdueFragment = document.createDocumentFragment();
                 const today = new Date();
-                const d = new Date(t.date);
-                if (d.getFullYear() !== year || d.getMonth() !== month) return;
+
+            sortedTasks.forEach(task => {
+                const d = new Date(task.date);
+                if (d.getFullYear() !== year || d.getMonth() !== monthIndex) return;
+
                 const day = d.getDate();
-                const hourIndex = Number(t.hour);
-                const selector = `.cell[data-day="${day}"][data-hour="${hourIndex}"]`;
-                const cell = document.querySelector(selector);
+                const hourIndex = Number(task.hour ?? 0);
+                const cell = cellLookup.get(buildCellKey(day, hourIndex));
                 if (!cell) return;
 
-                const displayTitle = t.title || t.task_name || '';
-
-                // ---- CALENDAR PILL (keeps existing color selection) ----
+                const displayTitle = task.title || task.task_name || '';
+                const normalizedStatus = (task.status || 'Pending').toLowerCase();
+                const displayPriority = normalizeSelection(task.priority, PRIORITY_OPTIONS, 'Medium');
                 const pill = document.createElement('div');
                 pill.className = 'event-pill';
                 pill.textContent = displayTitle;
-                pill.style.backgroundColor = t.color || '#2e7d32';
-                pill.title = t.description || '';
-                pill.dataset.id = t.id || t.task_id;
-                pill.addEventListener('click', () => openEditModal({ ...t, title: displayTitle, id: t.id || t.task_id }));
+                pill.style.backgroundColor = task.color || '#2e7d32';
+                pill.title = task.description || '';
+                const taskId = task.id || task.task_id;
+                pill.dataset.id = taskId;
+                pill.addEventListener('click', () => openEditModal({ ...task, title: displayTitle, id: taskId }));
                 cell.appendChild(pill);
 
-                // ---- COLOR CODED LIST ITEM ----
                 const li = document.createElement('li');
-                li.textContent = `${displayTitle} — ${t.priority || 'Medium'} — ${d.toLocaleDateString()} ${hours[hourIndex]}`;
+                const hourLabel = hours[hourIndex] || `${hourIndex}:00`;
+                li.textContent = `${displayTitle} — ${displayPriority} — ${d.toLocaleDateString()} ${hourLabel}`;
                 li.style.cursor = 'pointer';
-                li.onclick = () => openEditModal({ ...t, title: displayTitle, id: t.id || t.task_id });
+                li.dataset.id = taskId;
+                li.setAttribute('role', 'button');
+                li.addEventListener('click', () => openEditModal({ ...task, title: displayTitle, id: taskId }));
+                li.addEventListener('keydown', (evt) => {
+                    if (evt.key === 'Enter' || evt.key === ' ') {
+                        evt.preventDefault();
+                        openEditModal({ ...task, title: displayTitle, id: taskId });
+                    }
+                });
+                li.setAttribute('tabindex', '0');
 
-                // automatic background color based on PRIORITY
-                let bgColor = '';
-                switch ((t.priority || 'medium').toLowerCase()) {
-                    case 'high': bgColor = '#ff6b6b'; break;   // red
-                    case 'medium': bgColor = '#fbc02d'; break; // yellow
-                    case 'low': bgColor = '#81c784'; break;    // green
-                    default: bgColor = '#cfd8dc';              // gray fallback
+                let bgColor = '#cfd8dc';
+                switch (displayPriority.toLowerCase()) {
+                    case 'high':
+                        bgColor = '#ff6b6b';
+                        break;
+                    case 'medium':
+                        bgColor = '#fbc02d';
+                        break;
+                    case 'low':
+                        bgColor = '#81c784';
+                        break;
                 }
-                if (t.status === 'Overdue') {
-                    bgColor = '#ef9a9a'; // light red
-                }
-
                 li.style.backgroundColor = bgColor;
                 li.style.padding = '6px 10px';
                 li.style.borderRadius = '6px';
                 li.style.marginBottom = '4px';
-                li.style.color = '#222';
-                // li.textContent = t.title;
+                li.style.color = '#111';
 
-                const dueDate = new Date(t.date);
-                const isCompleted = (t.status || 'pending').toLowerCase() === 'completed';
-                const isOverdue = dueDate < today && !isCompleted;
+                const isCompleted = normalizedStatus === 'completed';
+                const isOverdue = d < today && !isCompleted;
 
-                // append based on status
-                if ((t.status || 'pending').toLowerCase() === 'completed') {
-                    completed.appendChild(li);
-                }else if (isOverdue) {
-                    li.style.backgroundColor = "#ef9a9a";
-                    overdue.appendChild(li);
+                if (isCompleted) {
+                    li.classList.add('list-item-completed');
+                    completedFragment.appendChild(li);
+                } else if (isOverdue) {
+                    li.classList.add('list-item-overdue');
+                    overdueFragment.appendChild(li);
                 } else {
-                    unfinished.appendChild(li);
+                    unfinishedFragment.appendChild(li);
                 }
-                
             });
 
+            if (unfinished) unfinished.appendChild(unfinishedFragment);
+            if (completed) completed.appendChild(completedFragment);
+            if (overdueList) overdueList.appendChild(overdueFragment);
         }
 
         // Modal controls
@@ -508,7 +578,6 @@
 
             editingTaskId = null;
 
-            document.getElementById('addTaskBtn').onclick = openModal;
             const existingDelete = document.getElementById('deleteTaskBtn');
             if (existingDelete) existingDelete.remove();
         }
@@ -533,17 +602,18 @@
         async function openEditModal(task) {
             populateHourSelect();
             taskTitle.value = task.title || '';
-            taskDate.value = task.date || new Date().toISOString().slice(0,10);
+            const normalizedDate = task.date ? String(task.date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+            taskDate.value = normalizedDate;
             taskHour.value = String(task.hour ?? currentHour);
             taskColor.value = task.color || '#2e7d32';
-            document.getElementById('taskDescription').value = task.description || '';
-            document.getElementById('taskPriority').value = task.priority || 'medium';
-            document.getElementById('taskStatus').value = task.status || 'pending';
+            taskDescription.value = task.description || '';
+            taskPriorityField.value = normalizeSelection(task.priority, PRIORITY_OPTIONS, 'Medium');
+            taskStatusField.value = normalizeSelection(task.status, STATUS_OPTIONS, 'Pending');
             formError.textContent = "";
             quickAddModal.classList.remove('hidden');
             quickAddModal.setAttribute('aria-hidden', 'false');
 
-            editingTaskId = task.id;
+            editingTaskId = task.id || task.task_id;
 
             const actions = document.querySelector('.modal-actions');
             let deleteBtn = document.getElementById('deleteTaskBtn');
@@ -558,14 +628,13 @@
 
             deleteBtn.onclick = async () => {
                 try {
-                    await fetch(`/api/tasks/${task.id}/`, {
+                    await fetch(`/api/tasks/${editingTaskId}/`, {
                         method: 'DELETE',
                         headers: { 'X-CSRFToken': csrftoken },
                         credentials: 'same-origin'
                     });
                     closeModal();
-                    await renderTasks();
-                    await renderWeeklySummary();
+                    await refreshDashboardData({ silent: true });
                 } catch (e) {
                     formError.textContent = 'Failed to delete task';
                 }
@@ -579,9 +648,9 @@
             const date = taskDate.value;
             const hour = taskHour.value;
             const color = taskColor.value;
-            const description = document.getElementById('taskDescription').value.trim();
-            const priority = document.getElementById('taskPriority').value;
-            const status = document.getElementById('taskStatus').value;
+            const description = taskDescription.value.trim();
+            const priority = taskPriorityField.value;
+            const status = taskStatusField.value;
 
             // simple validation system
             if (!title) {
@@ -616,7 +685,8 @@
                     });
                 } else {
                     
-                    const tasks = await apiGetTasks(new Date().getFullYear(), new Date().getMonth());
+                    const limitCheckDate = new Date();
+                    const tasks = await apiGetTasks(limitCheckDate.getFullYear(), limitCheckDate.getMonth() + 1);
                     const currentTasks = tasks.filter(t => (t.status || 'pending').toLowerCase() !== 'completed');
 
                     if (currentTasks.length >= 5) {
@@ -638,8 +708,7 @@
 
                 editingTaskId = null; // reset edit mode
                 closeModal();
-                await renderTasks();
-                await renderWeeklySummary();
+                await refreshDashboardData({ silent: true });
 
             } catch (err) {
                 console.error(err);
@@ -647,24 +716,33 @@
             }
         });
 
-        async function renderWeeklySummary() {
+        async function renderWeeklySummary(summaryData = null) {
             try {
-                const s = await apiWeeklySummary();
+                const s = summaryData ?? await apiWeeklySummary();
                 wsRange.textContent = `${new Date(s.start).toLocaleDateString()} - ${new Date(s.end).toLocaleDateString()}`;
                 wsTotal.textContent = s.total;
                 wsCompleted.textContent = s.completed;
                 wsPending.textContent = s.pending;
+                if (wsWarningBanner) {
+                    const showWarning = Boolean(s.overload_warning);
+                    wsWarningBanner.classList.toggle('hidden', !showWarning);
+                    wsWarningBanner.setAttribute('aria-hidden', showWarning ? 'false' : 'true');
+                }
             } catch (e) {
                 wsRange.textContent = '—';
                 wsTotal.textContent = '0';
                 wsCompleted.textContent = '0';
                 wsPending.textContent = '0';
+                if (wsWarningBanner) {
+                    wsWarningBanner.classList.add('hidden');
+                    wsWarningBanner.setAttribute('aria-hidden', 'true');
+                }
             }
         }
 
-        fetch('/api/tasks/weekly_completion_stats/')
-            .then(res => res.json())
-            .then(data => {
+        async function renderCompletionStats(statsData = null) {
+            try {
+                const data = statsData ?? await apiWeeklyCompletionStats();
                 const completed = data.completed_count || 0;
                 const overdue = data.overdue_count || 0;
                 const unfinished = data.unfinished_count || 0;
@@ -674,37 +752,74 @@
                 const overduePercent = total ? (overdue / total) * 100 : 0;
                 const unfinishedPercent = total ? (unfinished / total) * 100 : 0;
 
-                const circle = document.getElementById('completion-circle');
-                document.getElementById('completed-pct').textContent = Math.round(completedPercent) + '%';
-                document.getElementById('overdue-pct').textContent = Math.round(overduePercent) + '%';
-                document.getElementById('unfinished-pct').textContent = Math.round(unfinishedPercent) + '%';
+                if (completedPctLabel) completedPctLabel.textContent = Math.round(completedPercent) + '%';
+                if (overduePctLabel) overduePctLabel.textContent = Math.round(overduePercent) + '%';
+                if (unfinishedPctLabel) unfinishedPctLabel.textContent = Math.round(unfinishedPercent) + '%';
 
-                // circle.textContent = Math.round(completedPercent) + '%';
+                updateCompletionCircle(completedPercent, overduePercent, unfinishedPercent);
+            } catch (err) {
+                console.error(err);
+                if (completedPctLabel) completedPctLabel.textContent = '0%';
+                if (overduePctLabel) overduePctLabel.textContent = '0%';
+                if (unfinishedPctLabel) unfinishedPctLabel.textContent = '0%';
+                updateCompletionCircle(0, 0, 0);
+            }
+        }
 
-                circle.style.background = `
+        function updateCompletionCircle(completedPercent, overduePercent, unfinishedPercent) {
+            if (!completionCircle) return;
+            completionCircle.textContent = Math.round(completedPercent) + '%';
+            completionCircle.setAttribute('aria-label', `Completed ${Math.round(completedPercent)} percent`);
+            const hasProgress = completedPercent + overduePercent + unfinishedPercent > 0;
+            completionCircle.style.background = hasProgress
+                ? `
                     conic-gradient(
                         #0ab913 0% ${completedPercent}%,
                         #ffb3b3 ${completedPercent}% ${completedPercent + overduePercent}%,
                         #ffed9c ${completedPercent + overduePercent}% 100%
                     )
-                `;
-            })
-            .catch(err => console.error(err));
+                  `
+                : '#e2e8f0';
+        }
 
+        async function refreshDashboardData({ silent = false } = {}) {
+            if (isRefreshing) return;
+            isRefreshing = true;
+            if (!silent) setAnalyticsStatus('Syncing latest data…', 'info');
+            toggleRefresh(true);
 
-        // fetch('/api/tasks/weekly_completion_stats/')
-        //     .then(res => res.json())
-        //     .then(data => {
-        //         const percent = data.completion_percentage;
-        //         const circle = document.getElementById('completion-circle');
-        //         circle.textContent = percent + '%';
-        //         circle.style.background = `conic-gradient(green 0% ${percent}%, rgb(241, 199, 106) ${percent}% 100%)`;
-        //     })
-        //     .catch(err => console.error(err));
+            try {
+                const year = now.getFullYear();
+                const monthParam = now.getMonth() + 1;
+                const [tasks, summary, completion] = await Promise.all([
+                    apiGetTasks(year, monthParam),
+                    apiWeeklySummary(),
+                    apiWeeklyCompletionStats()
+                ]);
+                tasksCache = tasks;
+                summaryCache = summary;
+                completionCache = completion;
+
+                await renderTasks(tasksCache);
+                await renderWeeklySummary(summaryCache);
+                await renderCompletionStats(completionCache);
+
+                if (!silent) setAnalyticsStatus('Dashboard up to date', 'success');
+            } catch (error) {
+                console.error(error);
+                setAnalyticsStatus('Unable to refresh dashboard', 'error');
+            } finally {
+                toggleRefresh(false);
+                isRefreshing = false;
+            }
+        }
+
+        if (refreshDashboardBtn) {
+            refreshDashboardBtn.addEventListener('click', () => refreshDashboardData());
+        }
 
         // Initial render
-        renderTasks();
-        renderWeeklySummary();
+        refreshDashboardData();
     </script>
 </body>
 </html>
