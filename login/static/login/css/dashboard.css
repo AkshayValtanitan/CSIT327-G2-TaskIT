@@ -169,6 +169,12 @@ body.dark-mode .themebtn:hover {
 
 .btn-secondary.compact {
     padding: 6px 10px;
+    width: 100%;
+    background: #3e4b55;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 6px;
 }
 
 .toolbar-actions button[aria-busy="true"] {
