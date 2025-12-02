@@ -58,7 +58,7 @@
             </div>
         </div>
         <div id="weeklySummary" class="weekly-summary">
-            <div class="weekly-report" data-step="2" data-intro="Track how your week is progressing.">
+            <div class="weekly-report" data-step="3" data-intro="Track how your week is progressing.">
                 <div class="summary-week">
                     <div class="summary-card">
                         <p class="summary-label">Week Range</p>
@@ -114,7 +114,9 @@
             </div>
         </div>
         
-        <div class="calendar-box">
+        <div class="calendar-box"
+                    data-step="5" 
+                    data-intro="After filling up the form you can press Add Task">
             <div class="calendar-header">
                 <h1 class="month-year" id="monthYear"></h1>
             </div>
@@ -135,9 +137,7 @@
                 <button id="closeQuickAdd" class="icon-btn" aria-label="Close">✕</button>
             </div>
             <form id="quickAddForm" novalidate>
-                <div class="form-grid"
-                    data-step="3" 
-                    data-intro="After filling up the form you can press Add Task">
+                <div class="form-grid">
                     <label>
                         <span>Title</span>
                         <input type="text" id="taskTitle" name="title" placeholder="e.g., Math assignment" required>
@@ -250,6 +250,22 @@
             const comparison = (value || '').toString().toLowerCase();
             const match = options.find(opt => opt.toLowerCase() === comparison);
             return match || fallback;
+        }
+
+        function getTaskColor(dateStr, status) {
+            const today = new Date();
+            const taskDate = new Date(dateStr);
+            const normalizedStatus = (status || '').toLowerCase();
+
+            if (normalizedStatus === 'completed') return 'task-completed'; // grey
+            const diffTime = taskDate.getTime() - today.getTime();
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+            if (diffDays >= 7) return 'task-green';      // 7 days or more
+            if (diffDays >= 2) return 'task-yellow';     // between 2 and 7 days
+            if (diffDays < 2) return 'task-red';         // less than 2 days
+
+            return 'task-default';
         }
 
         function setAnalyticsStatus(message, variant = "neutral") {
@@ -505,14 +521,29 @@
                 const displayTitle = task.title || task.task_name || '';
                 const normalizedStatus = (task.status || 'Pending').toLowerCase();
                 const displayPriority = normalizeSelection(task.priority, PRIORITY_OPTIONS, 'Medium');
+                // const pill = document.createElement('div');
+                // pill.className = 'event-pill';
+                // pill.textContent = displayTitle;
+                // pill.style.backgroundColor = task.color || '#2e7d32';
+                // pill.title = task.description || '';
+                // const taskId = task.id || task.task_id;
+                // pill.dataset.id = taskId;
+                // pill.addEventListener('click', () => openEditModal({ ...task, title: displayTitle, id: taskId }));
+                // cell.appendChild(pill);
+                const colorClass = getTaskColor(task.date, normalizedStatus);
+
                 const pill = document.createElement('div');
-                pill.className = 'event-pill';
+                pill.className = `event-pill ${colorClass}`;
                 pill.textContent = displayTitle;
-                pill.style.backgroundColor = task.color || '#2e7d32';
                 pill.title = task.description || '';
+
                 const taskId = task.id || task.task_id;
                 pill.dataset.id = taskId;
-                pill.addEventListener('click', () => openEditModal({ ...task, title: displayTitle, id: taskId }));
+
+                pill.addEventListener('click', () => 
+                    openEditModal({ ...task, title: displayTitle, id: taskId })
+                );
+
                 cell.appendChild(pill);
 
                 const li = document.createElement('li');
