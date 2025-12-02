@@ -573,15 +573,15 @@ body.dark-mode .summary-alert {
 }
 
 body.dark-mode #completion-circle {
-    color: #f8fafc;
+    color: #000000;
 }
 
 body.dark-mode .list-item-completed {
-    color: #86efac !important;
+    color: #000000 !important;
 }
 
 body.dark-mode .list-item-overdue {
-    color: #fee2e2 !important;
+    color: #000000 !important;
 }
 
 body.dark-mode .small {
