@@ -25,4 +25,4 @@ TaskIT Project is a responsive, user-friendly web platform designed for CIT Univ
 
 ## Deployed link:
 
-Not yet deployed
+(https://csit327-g2-taskit.onrender.com)
