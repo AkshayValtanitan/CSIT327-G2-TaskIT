@@ -40,13 +40,9 @@ def register_view(request):
 
                 # Prepare Supabase payload
                 payload = {
-                    "user_id": user_id,
-                    "first_name": first_name,
-                    "last_name": last_name,
                     "username": username,
                     "email": email,
-                    "password": hashed_password,
-                    "last_login": timezone.now().isoformat(),
+                    "password": hashed_password
                 }
 
                 url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}"
@@ -79,7 +75,9 @@ def register_view(request):
                     else:
                         messages.error(request, "Error creating account. Try again.")
                 except Exception as e:
-                    print("Supabase registration error:", e)
+                    print("STATUS CODE:", r.status_code)
+                    print("RESPONSE TEXT:", r.text)
+                    print("ERROR:", e)
                     messages.error(request, "Error creating account. Try again.")
         else:
             messages.error(request, "Please fill in all required fields.")
